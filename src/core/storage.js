@@ -73,6 +73,7 @@ export function makeBrain(root, hasGitRepo, defaultBranch) {
       },
       recentChanges: [],
       reverts: [],
+      violations: [],
     },
     events: { lastEventId: "", count: 0 },
   };
@@ -104,6 +105,11 @@ export function migrateBrainV1toV2(brain) {
     brain.facts.deploy.url = "";
   }
 
+  // Add violations array if missing
+  if (brain.state && !brain.state.violations) {
+    brain.state.violations = [];
+  }
+
   // Remove old importance field
   delete brain.importance;
 
@@ -119,6 +125,10 @@ export function readBrain(root) {
   if (brain.version < 2) {
     brain = migrateBrainV1toV2(brain);
     writeBrain(root, brain);
+  }
+  // Ensure violations array exists (added in v1.7.0)
+  if (brain.state && !brain.state.violations) {
+    brain.state.violations = [];
   }
   return brain;
 }
@@ -183,4 +193,12 @@ export function addRecentChange(brain, item) {
 
 export function addRevert(brain, item) {
   brain.state.reverts.unshift(item);
+}
+
+export function addViolation(brain, item) {
+  if (!brain.state.violations) brain.state.violations = [];
+  brain.state.violations.unshift(item);
+  if (brain.state.violations.length > 100) {
+    brain.state.violations = brain.state.violations.slice(0, 100);
+  }
 }

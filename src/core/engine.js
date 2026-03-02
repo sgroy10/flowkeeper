@@ -13,8 +13,10 @@ import {
   addRecentChange,
   addRevert,
   readEvents,
+  addViolation,
 } from "./storage.js";
-import { hasGit, getHead, getDefaultBranch, captureDiff } from "./git.js";
+import { hasGit, getHead, getDefaultBranch, captureDiff, getStagedFiles } from "./git.js";
+import { getTemplateNames, getTemplate } from "./templates.js";
 
 // --- Internal helpers ---
 
@@ -385,11 +387,23 @@ export function checkConflict(root, proposedAction) {
     )
     .join("\n");
 
-  return {
+  const result = {
     hasConflict: true,
     conflictingLocks: conflicting,
     analysis: `Potential conflict with ${conflicting.length} lock(s):\n${details}\nReview before proceeding.`,
   };
+
+  // Record violation for reporting
+  addViolation(brain, {
+    at: nowIso(),
+    action: proposedAction,
+    locks: conflicting.map((c) => ({ id: c.id, text: c.text, confidence: c.confidence, level: c.level })),
+    topLevel: conflicting[0].level,
+    topConfidence: conflicting[0].confidence,
+  });
+  writeBrain(root, brain);
+
+  return result;
 }
 
 // --- Auto-lock suggestions ---
@@ -777,6 +791,11 @@ npx speclock unguard <file>                      # Remove file protection
 npx speclock lock remove <lockId>                # Unlock (only after explicit permission)
 npx speclock log-change "what changed"           # Log changes
 npx speclock decide "decision"                   # Record a decision
+npx speclock template list                       # List constraint templates
+npx speclock template apply <name>               # Apply a template (nextjs, react, etc.)
+npx speclock report                              # Show violation stats
+npx speclock hook install                        # Install git pre-commit hook
+npx speclock audit                               # Audit staged files vs locks
 npx speclock context                             # Refresh context file
 \`\`\`
 
@@ -1041,4 +1060,189 @@ export function unguardFile(root, relativeFilePath) {
   fs.writeFileSync(fullPath, unguarded);
 
   return { success: true };
+}
+
+// --- Constraint Templates ---
+
+export function listTemplates() {
+  const names = getTemplateNames();
+  return names.map((name) => {
+    const t = getTemplate(name);
+    return {
+      name: t.name,
+      displayName: t.displayName,
+      description: t.description,
+      lockCount: t.locks.length,
+      decisionCount: t.decisions.length,
+    };
+  });
+}
+
+export function applyTemplate(root, templateName) {
+  const template = getTemplate(templateName);
+  if (!template) {
+    return { applied: false, error: `Template not found: "${templateName}". Available: ${getTemplateNames().join(", ")}` };
+  }
+
+  ensureInit(root);
+
+  let locksAdded = 0;
+  let decisionsAdded = 0;
+
+  for (const lockText of template.locks) {
+    addLock(root, lockText, [template.name], "agent");
+    autoGuardRelatedFiles(root, lockText);
+    locksAdded++;
+  }
+
+  for (const decText of template.decisions) {
+    addDecision(root, decText, [template.name], "agent");
+    decisionsAdded++;
+  }
+
+  syncLocksToPackageJson(root);
+
+  return {
+    applied: true,
+    templateName: template.name,
+    displayName: template.displayName,
+    locksAdded,
+    decisionsAdded,
+  };
+}
+
+// --- Violation Report ---
+
+export function generateReport(root) {
+  const brain = ensureInit(root);
+  const violations = brain.state.violations || [];
+
+  if (violations.length === 0) {
+    return {
+      totalViolations: 0,
+      violationsByLock: {},
+      mostTestedLocks: [],
+      recentViolations: [],
+      summary: "No violations recorded yet. SpecLock is watching.",
+    };
+  }
+
+  // Count violations per lock
+  const byLock = {};
+  for (const v of violations) {
+    for (const lock of v.locks) {
+      if (!byLock[lock.text]) {
+        byLock[lock.text] = { count: 0, lockId: lock.id, text: lock.text };
+      }
+      byLock[lock.text].count++;
+    }
+  }
+
+  // Sort by count descending
+  const mostTested = Object.values(byLock).sort((a, b) => b.count - a.count);
+
+  // Recent 10
+  const recent = violations.slice(0, 10).map((v) => ({
+    at: v.at,
+    action: v.action,
+    topLevel: v.topLevel,
+    topConfidence: v.topConfidence,
+    lockCount: v.locks.length,
+  }));
+
+  // Time range
+  const oldest = violations[violations.length - 1];
+  const newest = violations[0];
+
+  return {
+    totalViolations: violations.length,
+    timeRange: { from: oldest.at, to: newest.at },
+    violationsByLock: byLock,
+    mostTestedLocks: mostTested.slice(0, 5),
+    recentViolations: recent,
+    summary: `SpecLock blocked ${violations.length} violation(s). Most tested lock: "${mostTested[0].text}" (${mostTested[0].count} blocks).`,
+  };
+}
+
+// --- Pre-commit Audit ---
+
+export function auditStagedFiles(root) {
+  const brain = ensureInit(root);
+  const activeLocks = brain.specLock.items.filter((l) => l.active !== false);
+
+  if (activeLocks.length === 0) {
+    return { passed: true, violations: [], checkedFiles: 0, activeLocks: 0, message: "No active locks. Audit passed." };
+  }
+
+  const stagedFiles = getStagedFiles(root);
+  if (stagedFiles.length === 0) {
+    return { passed: true, violations: [], checkedFiles: 0, activeLocks: activeLocks.length, message: "No staged files. Audit passed." };
+  }
+
+  const violations = [];
+
+  for (const file of stagedFiles) {
+    // Check 1: Does the file have a SPECLOCK-GUARD header?
+    const fullPath = path.join(root, file);
+    if (fs.existsSync(fullPath)) {
+      try {
+        const content = fs.readFileSync(fullPath, "utf-8");
+        if (content.includes(GUARD_TAG)) {
+          violations.push({
+            file,
+            reason: "File has SPECLOCK-GUARD header — it is locked and must not be modified",
+            lockText: "(file-level guard)",
+            severity: "HIGH",
+          });
+          continue;
+        }
+      } catch (_) {}
+    }
+
+    // Check 2: Does the file path match any lock keywords?
+    const fileLower = file.toLowerCase();
+    for (const lock of activeLocks) {
+      const lockLower = lock.text.toLowerCase();
+      const lockHasNegation = hasNegation(lockLower);
+      if (!lockHasNegation) continue;
+
+      // Check if any FILE_KEYWORD_PATTERNS keywords from the lock match this file
+      for (const group of FILE_KEYWORD_PATTERNS) {
+        const lockMatchesKeyword = group.keywords.some((kw) => lockLower.includes(kw));
+        if (!lockMatchesKeyword) continue;
+
+        const fileMatchesPattern = group.patterns.some((pattern) => patternMatchesFile(pattern, fileLower) || patternMatchesFile(pattern, fileLower.split("/").pop()));
+        if (fileMatchesPattern) {
+          violations.push({
+            file,
+            reason: `File matches lock keyword pattern`,
+            lockText: lock.text,
+            severity: "MEDIUM",
+          });
+          break;
+        }
+      }
+    }
+  }
+
+  // Deduplicate by file
+  const seen = new Set();
+  const unique = violations.filter((v) => {
+    if (seen.has(v.file)) return false;
+    seen.add(v.file);
+    return true;
+  });
+
+  const passed = unique.length === 0;
+  const message = passed
+    ? `Audit passed. ${stagedFiles.length} file(s) checked against ${activeLocks.length} lock(s).`
+    : `AUDIT FAILED: ${unique.length} violation(s) in ${stagedFiles.length} staged file(s).`;
+
+  return {
+    passed,
+    violations: unique,
+    checkedFiles: stagedFiles.length,
+    activeLocks: activeLocks.length,
+    message,
+  };
 }

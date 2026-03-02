@@ -108,3 +108,9 @@ export function getDiffSummary(root) {
   if (!res.ok) return "";
   return res.stdout;
 }
+
+export function getStagedFiles(root) {
+  const res = safeGit(root, ["diff", "--cached", "--name-only"]);
+  if (!res.ok || !res.stdout) return [];
+  return res.stdout.split("\n").filter(Boolean);
+}

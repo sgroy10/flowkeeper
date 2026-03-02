@@ -18,6 +18,10 @@ import {
   detectDrift,
   syncLocksToPackageJson,
   autoGuardRelatedFiles,
+  listTemplates,
+  applyTemplate,
+  generateReport,
+  auditStagedFiles,
 } from "../core/engine.js";
 import { generateContext, generateContextPack } from "../core/context.js";
 import {
@@ -52,7 +56,7 @@ const PROJECT_ROOT =
   args.project || process.env.SPECLOCK_PROJECT_ROOT || process.cwd();
 
 // --- MCP Server ---
-const VERSION = "1.2.0";
+const VERSION = "1.7.0";
 const AUTHOR = "Sandeep Roy";
 
 const server = new McpServer(
@@ -760,6 +764,118 @@ server.tool(
         {
           type: "text",
           text: `## SpecLock Health Check\n\nScore: **${score}/100** (Grade: ${grade})\nEvents: ${brain.events.count} | Reverts: ${brain.state.reverts.length}\n\n### Checks\n${checks.join("\n")}${agentTimeline}\n\n---\n*SpecLock v${VERSION} — Developed by ${AUTHOR}*`,
+        },
+      ],
+    };
+  }
+);
+
+// ========================================
+// TEMPLATE, REPORT & AUDIT TOOLS (v1.7.0)
+// ========================================
+
+// Tool 20: speclock_apply_template
+server.tool(
+  "speclock_apply_template",
+  "Apply a pre-built constraint template (e.g., nextjs, react, express, supabase, stripe, security-hardened). Templates add recommended locks and decisions for common frameworks.",
+  {
+    name: z
+      .string()
+      .optional()
+      .describe("Template name to apply. Omit to list available templates."),
+  },
+  async ({ name }) => {
+    if (!name) {
+      const templates = listTemplates();
+      const formatted = templates
+        .map((t) => `- **${t.name}** (${t.displayName}): ${t.description} — ${t.lockCount} locks, ${t.decisionCount} decisions`)
+        .join("\n");
+      return {
+        content: [
+          {
+            type: "text",
+            text: `## Available Templates\n\n${formatted}\n\nCall again with a name to apply.`,
+          },
+        ],
+      };
+    }
+    const result = applyTemplate(PROJECT_ROOT, name);
+    if (!result.applied) {
+      return {
+        content: [{ type: "text", text: result.error }],
+        isError: true,
+      };
+    }
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Template "${result.displayName}" applied: ${result.locksAdded} lock(s) + ${result.decisionsAdded} decision(s) added.`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool 21: speclock_report
+server.tool(
+  "speclock_report",
+  "Get a violation report showing how many times SpecLock blocked constraint violations, which locks were tested most, and recent violations.",
+  {},
+  async () => {
+    const report = generateReport(PROJECT_ROOT);
+
+    const parts = [`## SpecLock Violation Report`, ``, `Total violations blocked: **${report.totalViolations}**`];
+
+    if (report.timeRange) {
+      parts.push(`Period: ${report.timeRange.from.substring(0, 10)} to ${report.timeRange.to.substring(0, 10)}`);
+    }
+
+    if (report.mostTestedLocks.length > 0) {
+      parts.push("", "### Most Tested Locks");
+      for (const lock of report.mostTestedLocks) {
+        parts.push(`- ${lock.count}x — "${lock.text}"`);
+      }
+    }
+
+    if (report.recentViolations.length > 0) {
+      parts.push("", "### Recent Violations");
+      for (const v of report.recentViolations) {
+        parts.push(`- [${v.at.substring(0, 19)}] ${v.topLevel} (${v.topConfidence}%) — "${v.action}"`);
+      }
+    }
+
+    parts.push("", `---`, report.summary);
+
+    return {
+      content: [{ type: "text", text: parts.join("\n") }],
+    };
+  }
+);
+
+// Tool 22: speclock_audit
+server.tool(
+  "speclock_audit",
+  "Audit git staged files against active SpecLock constraints. Returns pass/fail with details on which files violate locks. Used by the pre-commit hook.",
+  {},
+  async () => {
+    const result = auditStagedFiles(PROJECT_ROOT);
+
+    if (result.passed) {
+      return {
+        content: [{ type: "text", text: result.message }],
+      };
+    }
+
+    const formatted = result.violations
+      .map((v) => `- [${v.severity}] **${v.file}** — ${v.reason}\n  Lock: "${v.lockText}"`)
+      .join("\n");
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `## Audit Failed\n\n${formatted}\n\n${result.message}`,
         },
       ],
     };

@@ -1,6 +1,6 @@
 /**
  * SpecLock MCP HTTP Server — for Railway / remote deployment
- * Wraps the same 19 tools as the stdio server using Streamable HTTP transport.
+ * Wraps the same 22 tools as the stdio server using Streamable HTTP transport.
  * Developed by Sandeep Roy (https://github.com/sgroy10)
  */
 
@@ -23,6 +23,10 @@ import {
   endSession,
   suggestLocks,
   detectDrift,
+  listTemplates,
+  applyTemplate,
+  generateReport,
+  auditStagedFiles,
 } from "../core/engine.js";
 import { generateContext, generateContextPack } from "../core/context.js";
 import {
@@ -41,7 +45,7 @@ import {
 } from "../core/git.js";
 
 const PROJECT_ROOT = process.env.SPECLOCK_PROJECT_ROOT || process.cwd();
-const VERSION = "1.2.0";
+const VERSION = "1.7.0";
 const AUTHOR = "Sandeep Roy";
 
 function createSpecLockServer() {
@@ -253,6 +257,41 @@ function createSpecLockServer() {
     return { content: [{ type: "text", text: `## SpecLock Health Check\n\nScore: **${score}/100** (Grade: ${grade})\nEvents: ${brain.events.count} | Reverts: ${brain.state.reverts.length}\n\n### Checks\n${checks.join("\n")}${agentTimeline}\n\n---\n*SpecLock v${VERSION} — Developed by ${AUTHOR}*` }] };
   });
 
+  // Tool 20: speclock_apply_template
+  server.tool("speclock_apply_template", "Apply a pre-built constraint template (nextjs, react, express, supabase, stripe, security-hardened).", { name: z.string().optional().describe("Template name. Omit to list.") }, async ({ name }) => {
+    ensureInit(PROJECT_ROOT);
+    if (!name) {
+      const templates = listTemplates();
+      const text = templates.map(t => `- **${t.name}** (${t.displayName}): ${t.description} — ${t.lockCount} locks, ${t.decisionCount} decisions`).join("\n");
+      return { content: [{ type: "text", text: `## Available Templates\n\n${text}\n\nCall again with a name to apply.` }] };
+    }
+    const result = applyTemplate(PROJECT_ROOT, name);
+    if (!result.applied) return { content: [{ type: "text", text: result.error }], isError: true };
+    return { content: [{ type: "text", text: `Template "${result.displayName}" applied: ${result.locksAdded} lock(s) + ${result.decisionsAdded} decision(s).` }] };
+  });
+
+  // Tool 21: speclock_report
+  server.tool("speclock_report", "Violation report — how many times SpecLock blocked changes.", {}, async () => {
+    ensureInit(PROJECT_ROOT);
+    const report = generateReport(PROJECT_ROOT);
+    const parts = [`## Violation Report`, `Total blocked: **${report.totalViolations}**`];
+    if (report.mostTestedLocks.length > 0) {
+      parts.push("", "### Most Tested Locks");
+      for (const l of report.mostTestedLocks) parts.push(`- ${l.count}x — "${l.text}"`);
+    }
+    parts.push("", report.summary);
+    return { content: [{ type: "text", text: parts.join("\n") }] };
+  });
+
+  // Tool 22: speclock_audit
+  server.tool("speclock_audit", "Audit staged files against active locks.", {}, async () => {
+    ensureInit(PROJECT_ROOT);
+    const result = auditStagedFiles(PROJECT_ROOT);
+    if (result.passed) return { content: [{ type: "text", text: result.message }] };
+    const text = result.violations.map(v => `- [${v.severity}] **${v.file}** — ${v.reason}\n  Lock: "${v.lockText}"`).join("\n");
+    return { content: [{ type: "text", text: `## Audit Failed\n\n${text}\n\n${result.message}` }] };
+  });
+
   return server;
 }
 
@@ -292,7 +331,7 @@ app.get("/", (req, res) => {
     version: VERSION,
     author: AUTHOR,
     description: "AI Continuity Engine — Kill AI amnesia",
-    tools: 19,
+    tools: 22,
     mcp_endpoint: "/mcp",
     npm: "https://www.npmjs.com/package/speclock",
     github: "https://github.com/sgroy10/speclock",

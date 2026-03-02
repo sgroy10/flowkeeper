@@ -174,10 +174,10 @@ Result: [HIGH] Conflict detected (confidence: 85%)
 | Mode | Platforms | How It Works |
 |------|-----------|--------------|
 | **MCP Remote** | Lovable, bolt.diy, Base44 | Connect via URL — no install needed |
-| **MCP Local** | Claude Code, Cursor, Windsurf, Cline | `npx speclock serve` — 19 tools via MCP |
+| **MCP Local** | Claude Code, Cursor, Windsurf, Cline | `npx speclock serve` — 22 tools via MCP |
 | **npm File-Based** | Bolt.new, Aider, Rocket.new | `npx speclock setup` — AI reads SPECLOCK.md + uses CLI |
 
-## 19 MCP Tools
+## 22 MCP Tools
 
 ### Memory Management
 | Tool | Purpose |
@@ -218,6 +218,13 @@ Result: [HIGH] Conflict detected (confidence: 85%)
 | `speclock_detect_drift` | Scan changes for constraint violations |
 | `speclock_health` | Health score + multi-agent timeline |
 
+### Templates, Reports & Enforcement (v1.7.0)
+| Tool | Purpose |
+|------|---------|
+| `speclock_apply_template` | Apply pre-built constraint templates (nextjs, react, express, etc.) |
+| `speclock_report` | Violation report — blocked change stats |
+| `speclock_audit` | Audit staged files against active locks |
+
 ## Auto-Guard: Locks That Actually Work
 
 When you add a lock, SpecLock **automatically finds and guards related files**:
@@ -251,7 +258,7 @@ Active locks are also embedded in `package.json` — so the AI sees your constra
 
 ```bash
 # Setup
-speclock setup --goal "Build my app"   # One-shot: init + rules + context
+speclock setup --goal "Build my app" --template nextjs  # One-shot setup + template
 
 # Memory
 speclock goal <text>                   # Set project goal
@@ -264,6 +271,18 @@ speclock note <text>                   # Add a note
 speclock check <text>                  # Check for lock conflicts
 speclock guard <file> --lock "text"    # Manually guard a specific file
 speclock unguard <file>                # Remove guard from file
+
+# Templates (v1.7.0)
+speclock template list                 # List available templates
+speclock template apply <name>         # Apply: nextjs, react, express, supabase, stripe, security-hardened
+
+# Violation Report (v1.7.0)
+speclock report                        # Show violation stats + most tested locks
+
+# Git Pre-commit Hook (v1.7.0)
+speclock hook install                  # Install pre-commit hook
+speclock hook remove                   # Remove pre-commit hook
+speclock audit                         # Audit staged files against locks
 
 # Tracking
 speclock log-change <text> --files x   # Log a change
@@ -283,7 +302,7 @@ speclock watch                         # Start file watcher
 └──────────────┬──────────────────┬────────────────────┘
                │                  │
      MCP Protocol          File-Based (npm)
-    (19 tool calls)      (reads SPECLOCK.md +
+    (22 tool calls)      (reads SPECLOCK.md +
                         .speclock/context/latest.md,
                          runs CLI commands)
                │                  │
@@ -318,4 +337,4 @@ MIT License - see [LICENSE](LICENSE) file.
 
 ---
 
-*SpecLock v1.6.0 — Because remembering isn't enough. AI needs to respect boundaries.*
+*SpecLock v1.7.0 — Because remembering isn't enough. AI needs to respect boundaries.*

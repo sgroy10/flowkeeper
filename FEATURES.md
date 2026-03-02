@@ -65,7 +65,7 @@ URL: https://speclock-mcp-production.up.railway.app/mcp
   }
 }
 ```
-The AI tool runs the MCP server locally. 19 tools available via MCP protocol. Claude Code follows server instructions automatically — zero config.
+The AI tool runs the MCP server locally. 22 tools available via MCP protocol. Claude Code follows server instructions automatically — zero config.
 
 ### Mode 3: npm File-Based (Bolt.new, Aider, any platform with npm)
 ```bash
@@ -126,7 +126,7 @@ Bolt: "All planning logged to Speclock for project continuity!"
 
 ---
 
-## 19 MCP Tools
+## 22 MCP Tools
 
 ### Memory Management (8 tools)
 | Tool | Purpose |
@@ -167,13 +167,20 @@ Bolt: "All planning logged to Speclock for project continuity!"
 | `speclock_detect_drift` | Scan changes for constraint violations |
 | `speclock_health` | Health score + multi-agent timeline |
 
+### Templates, Reports & Enforcement (3 tools — v1.7.0)
+| Tool | Purpose |
+|------|---------|
+| `speclock_apply_template` | Apply pre-built constraint templates (nextjs, react, express, etc.) |
+| `speclock_report` | Violation report — how many times SpecLock blocked changes |
+| `speclock_audit` | Audit staged files against active locks (used by pre-commit hook) |
+
 ---
 
 ## CLI Commands
 
 ```bash
 # Setup & Initialization
-npx speclock setup --goal "Project goal"    # Full one-shot setup
+npx speclock setup --goal "Project goal" --template nextjs  # Full setup + template
 npx speclock init                           # Initialize only
 
 # Memory Management
@@ -189,6 +196,18 @@ npx speclock context                        # Regenerate context file
 
 # Protection
 npx speclock check "What you plan to do"    # Check for conflicts
+
+# Templates (v1.7.0)
+npx speclock template list                  # List available templates
+npx speclock template apply nextjs          # Apply a template
+
+# Violation Report (v1.7.0)
+npx speclock report                         # Show violation stats
+
+# Git Pre-commit Hook (v1.7.0)
+npx speclock hook install                   # Install pre-commit hook
+npx speclock hook remove                    # Remove pre-commit hook
+npx speclock audit                          # Audit staged files vs locks
 
 # Information
 npx speclock status                         # Brain summary
@@ -248,7 +267,7 @@ Result: CONFLICT DETECTED (HIGH — 100%)
 └──────────────┬──────────────────┬────────────────────┘
                │                  │
      MCP Protocol          File-Based (npm)
-    (19 tool calls)      (reads SPECLOCK.md +
+    (22 tool calls)      (reads SPECLOCK.md +
                         .speclock/context/latest.md,
                          runs CLI commands)
                │                  │
@@ -337,4 +356,4 @@ AI:   Unlocked. Proceeding with auth file changes.
 
 ---
 
-*SpecLock v1.3.0 — Because no AI session should ever forget.*
+*SpecLock v1.7.0 — Because no AI session should ever forget.*

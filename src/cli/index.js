@@ -16,9 +16,14 @@ import {
   injectPackageJsonMarker,
   syncLocksToPackageJson,
   autoGuardRelatedFiles,
+  listTemplates,
+  applyTemplate,
+  generateReport,
+  auditStagedFiles,
 } from "../core/engine.js";
 import { generateContext } from "../core/context.js";
 import { readBrain } from "../core/storage.js";
+import { installHook, removeHook } from "../core/hooks.js";
 
 // --- Argument parsing ---
 
@@ -74,23 +79,29 @@ function refreshContext(root) {
 
 function printHelp() {
   console.log(`
-SpecLock v1.6.0 — AI Constraint Engine
+SpecLock v1.7.0 — AI Constraint Engine
 Developed by Sandeep Roy (github.com/sgroy10)
 
 Usage: speclock <command> [options]
 
 Commands:
-  setup [--goal <text>]           Full setup: init + SPECLOCK.md + context
+  setup [--goal <text>] [--template <name>]  Full setup: init + SPECLOCK.md + context
   init                            Initialize SpecLock in current directory
   goal <text>                     Set or update the project goal
   lock <text> [--tags a,b]        Add a non-negotiable constraint
   lock remove <id>                Remove a lock by ID
-  guard <file> [--lock "text"]    Inject lock warning into a file (NEW)
-  unguard <file>                  Remove lock warning from a file (NEW)
+  guard <file> [--lock "text"]    Inject lock warning into a file
+  unguard <file>                  Remove lock warning from a file
   decide <text> [--tags a,b]      Record a decision
   note <text> [--pinned]          Add a pinned note
   log-change <text> [--files x,y] Log a significant change
   check <text>                    Check if action conflicts with locks
+  template list                   List available constraint templates
+  template apply <name>           Apply a template (nextjs, react, etc.)
+  report                          Show violation report + stats
+  hook install                    Install git pre-commit hook
+  hook remove                     Remove git pre-commit hook
+  audit                           Audit staged files against locks
   context                         Generate and print context pack
   facts deploy [--provider X]     Set deployment facts
   watch                           Start file watcher (auto-track changes)
@@ -102,17 +113,20 @@ Options:
   --source <user|agent>           Who created this (default: user)
   --files <a.ts,b.ts>             Comma-separated file paths
   --goal <text>                   Goal text (for setup command)
+  --template <name>               Template to apply during setup
   --lock <text>                   Lock text (for guard command)
   --project <path>                Project root (for serve)
 
+Templates: nextjs, react, express, supabase, stripe, security-hardened
+
 Examples:
-  npx speclock setup --goal "Build PawPalace pet shop"
+  npx speclock setup --goal "Build PawPalace pet shop" --template nextjs
   npx speclock lock "Never modify auth files"
-  npx speclock guard src/Auth.tsx --lock "Never modify auth files"
+  npx speclock template apply supabase
   npx speclock check "Adding social login to auth page"
-  npx speclock log-change "Built payment system" --files src/pay.tsx
-  npx speclock decide "Use Supabase for auth"
-  npx speclock context
+  npx speclock report
+  npx speclock hook install
+  npx speclock audit
   npx speclock status
 `);
 }
@@ -190,11 +204,21 @@ async function main() {
       console.log("Injected SpecLock marker into package.json.");
     }
 
-    // 5. Generate context
+    // 5. Apply template if specified
+    if (flags.template) {
+      const result = applyTemplate(root, flags.template);
+      if (result.applied) {
+        console.log(`Applied template "${result.displayName}": ${result.locksAdded} lock(s), ${result.decisionsAdded} decision(s).`);
+      } else {
+        console.error(`Template error: ${result.error}`);
+      }
+    }
+
+    // 6. Generate context
     generateContext(root);
     console.log("Generated .speclock/context/latest.md");
 
-    // 6. Print summary
+    // 7. Print summary
     console.log(`
 SpecLock is ready!
 
@@ -355,8 +379,8 @@ Tip: When starting a new chat, tell the AI:
       console.log(`\nCONFLICT DETECTED`);
       console.log("=".repeat(50));
       for (const lock of result.conflictingLocks) {
-        console.log(`  [${lock.confidence}] "${lock.text}"`);
-        console.log(`  Confidence: ${lock.score}%`);
+        console.log(`  [${lock.level}] "${lock.text}"`);
+        console.log(`  Confidence: ${lock.confidence}%`);
         if (lock.reasons && lock.reasons.length > 0) {
           for (const reason of lock.reasons) {
             console.log(`  - ${reason}`);
@@ -458,6 +482,119 @@ Tip: When starting a new chat, tell the AI:
     process.env.SPECLOCK_PROJECT_ROOT = projectArg;
     await import("../mcp/server.js");
     return;
+  }
+
+  // --- TEMPLATE ---
+  if (cmd === "template") {
+    const sub = args[0];
+    if (sub === "list" || !sub) {
+      const templates = listTemplates();
+      console.log("\nAvailable Templates:");
+      console.log("=".repeat(50));
+      for (const t of templates) {
+        console.log(`  ${t.name.padEnd(20)} ${t.displayName} — ${t.description}`);
+        console.log(`  ${"".padEnd(20)} ${t.lockCount} lock(s), ${t.decisionCount} decision(s)`);
+        console.log("");
+      }
+      console.log("Apply: npx speclock template apply <name>");
+      return;
+    }
+    if (sub === "apply") {
+      const name = args[1];
+      if (!name) {
+        console.error("Error: Template name is required.");
+        console.error("Usage: speclock template apply <name>");
+        console.error("Run 'speclock template list' to see available templates.");
+        process.exit(1);
+      }
+      const result = applyTemplate(root, name);
+      if (result.applied) {
+        refreshContext(root);
+        console.log(`Template "${result.displayName}" applied successfully!`);
+        console.log(`  Locks added: ${result.locksAdded}`);
+        console.log(`  Decisions added: ${result.decisionsAdded}`);
+      } else {
+        console.error(result.error);
+        process.exit(1);
+      }
+      return;
+    }
+    console.error(`Unknown template command: ${sub}`);
+    console.error("Usage: speclock template list | speclock template apply <name>");
+    process.exit(1);
+  }
+
+  // --- REPORT ---
+  if (cmd === "report") {
+    const report = generateReport(root);
+    console.log("\nSpecLock Violation Report");
+    console.log("=".repeat(50));
+    console.log(`Total violations blocked: ${report.totalViolations}`);
+    if (report.timeRange) {
+      console.log(`Period: ${report.timeRange.from.substring(0, 10)} to ${report.timeRange.to.substring(0, 10)}`);
+    }
+    if (report.mostTestedLocks.length > 0) {
+      console.log("\nMost tested locks:");
+      for (const lock of report.mostTestedLocks) {
+        console.log(`  ${lock.count}x — "${lock.text}"`);
+      }
+    }
+    if (report.recentViolations.length > 0) {
+      console.log("\nRecent violations:");
+      for (const v of report.recentViolations) {
+        console.log(`  [${v.at.substring(0, 19)}] ${v.topLevel} (${v.topConfidence}%) — "${v.action.substring(0, 60)}"`);
+      }
+    }
+    console.log(`\n${report.summary}`);
+    return;
+  }
+
+  // --- HOOK ---
+  if (cmd === "hook") {
+    const sub = args[0];
+    if (sub === "install") {
+      const result = installHook(root);
+      if (result.success) {
+        console.log(result.message);
+      } else {
+        console.error(result.error);
+        process.exit(1);
+      }
+      return;
+    }
+    if (sub === "remove") {
+      const result = removeHook(root);
+      if (result.success) {
+        console.log(result.message);
+      } else {
+        console.error(result.error);
+        process.exit(1);
+      }
+      return;
+    }
+    console.error("Usage: speclock hook install | speclock hook remove");
+    process.exit(1);
+  }
+
+  // --- AUDIT ---
+  if (cmd === "audit") {
+    const result = auditStagedFiles(root);
+    if (result.passed) {
+      console.log(result.message);
+      process.exit(0);
+    } else {
+      console.log("\nSPECLOCK AUDIT FAILED");
+      console.log("=".repeat(50));
+      for (const v of result.violations) {
+        console.log(`  [${v.severity}] ${v.file}`);
+        console.log(`    Lock: ${v.lockText}`);
+        console.log(`    Reason: ${v.reason}`);
+        console.log("");
+      }
+      console.log(result.message);
+      console.log("Commit blocked. Unlock files or unstage them to proceed.");
+      process.exit(1);
+    }
   }
 
   // --- STATUS ---
