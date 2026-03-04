@@ -387,13 +387,31 @@ export const TEMPORAL_MODIFIERS = [
 // ===================================================================
 
 const STOPWORDS = new Set([
-  "the", "this", "that", "with", "from", "for", "are", "was", "were",
-  "been", "being", "have", "has", "had", "will", "would", "could",
-  "should", "may", "might", "shall", "can", "need", "must", "all",
-  "any", "every", "some", "most", "other", "each", "both", "few",
-  "more", "before", "after", "during", "while", "about", "into",
-  "over", "under", "between", "through", "its", "our", "their",
-  "your", "also", "just", "very", "too", "really", "quite",
+  // Articles & pronouns
+  "a", "an", "the", "this", "that", "it", "its", "our", "their",
+  "your", "my", "his", "her", "we", "they", "them", "i",
+  // Prepositions & conjunctions
+  "to", "of", "in", "on", "at", "by", "up", "as", "or", "and",
+  "nor", "but", "so", "if", "no", "not", "is", "be", "do", "did",
+  "with", "from", "for", "into", "over", "under", "between", "through",
+  "about", "before", "after", "during", "while",
+  // Auxiliary verbs & common verbs
+  "are", "was", "were", "been", "being", "have", "has", "had",
+  "will", "would", "could", "should", "may", "might", "shall",
+  "can", "need", "must", "does", "done",
+  // Quantifiers & adjectives
+  "all", "any", "every", "some", "most", "other", "each", "both",
+  "few", "more", "less", "many", "much",
+  // Adverbs
+  "also", "just", "very", "too", "really", "quite", "only", "then",
+  "now", "here", "there", "when", "where", "how", "what", "which",
+  "who", "whom", "why",
+  // Common generic nouns (too vague to be meaningful in conflict matching)
+  "system", "page", "app", "application", "project", "code", "file",
+  "files", "data", "way", "thing", "things", "part", "set", "use",
+  "using", "used", "make", "made", "new", "get", "got",
+  "module", "component", "service", "feature", "function", "method",
+  "class", "type", "model", "view", "controller", "handler",
 ]);
 
 // ===================================================================
@@ -695,6 +713,9 @@ export function expandSemantics(tokens) {
   for (const token of tokens) {
     const t = token.toLowerCase();
 
+    // Skip stopwords — they shouldn't trigger synonym/euphemism/concept expansions
+    if (STOPWORDS.has(t)) continue;
+
     // Synonym group expansion
     for (const group of SYNONYM_GROUPS) {
       if (group.includes(t)) {
@@ -940,10 +961,41 @@ export function scoreConflict({ actionText, lockText }) {
     reasons.push(`concept match: ${conceptMatches.slice(0, 2).join("; ")}`);
   }
 
-  // 6. Check for intent alignment BEFORE adding negation/intent bonuses
-  // This is the KEY false-positive prevention step.
-  const hasAnyMatch = directOverlap.length > 0 || synonymMatches.length > 0 ||
-    euphemismMatches.length > 0 || conceptMatches.length > 0 || phraseOverlap.length > 0;
+  // 6. Subject relevance gate — prevent false positives where only verb-level
+  // matches exist (euphemism/synonym on verbs) but the subjects are different.
+  // "Optimize images" should NOT conflict with "Do not modify calculateShipping"
+  // because the subjects (images vs shipping function) don't overlap.
+  //
+  // However, subject-level synonyms like "content safety" → "CSAM detection"
+  // should still count as subject relevance (same concept, different words).
+  const ACTION_VERBS_SET = new Set([
+    "modify", "change", "alter", "update", "delete", "remove", "add", "create",
+    "disable", "enable", "replace", "swap", "switch", "move", "migrate",
+    "install", "uninstall", "deploy", "rewrite", "revise", "restructure",
+    "refactor", "clean", "purge", "wipe", "drop", "kill", "destroy",
+    "reduce", "simplify", "fix", "repair", "restore", "recover", "break",
+    "expose", "hide", "connect", "disconnect", "merge", "split", "truncate",
+    "bypass", "skip", "ignore", "override", "adjust", "tweak", "tune",
+  ]);
+
+  // Check if any synonym/concept match involves a non-verb term (= subject match)
+  const hasSynonymSubjectMatch = synonymMatches.some(m => {
+    // Format: "term → expansion" — check if expansion is not a common verb
+    const parts = m.split(" → ");
+    const expansion = (parts[1] || "").trim();
+    return !ACTION_VERBS_SET.has(expansion);
+  });
+
+  const hasSubjectMatch = directOverlap.length > 0 || phraseOverlap.length > 0 ||
+    conceptMatches.length > 0 || hasSynonymSubjectMatch;
+  const hasAnyMatch = hasSubjectMatch || synonymMatches.length > 0 ||
+    euphemismMatches.length > 0;
+
+  // If the ONLY matches are verb-level (euphemism/synonym) with no subject
+  // overlap, drastically reduce the score — these are likely false positives
+  if (!hasSubjectMatch && (synonymMatches.length > 0 || euphemismMatches.length > 0)) {
+    score = Math.floor(score * 0.15);
+  }
 
   const prohibitedVerb = extractProhibitedVerb(lockText);
   const actionPrimaryVerb = extractPrimaryVerb(actionText);
@@ -961,10 +1013,13 @@ export function scoreConflict({ actionText, lockText }) {
   }
 
   // Check 2: Positive action intent against a lock that prohibits a negative action
+  // ONLY applies when there are no euphemism/synonym matches suggesting the
+  // action is actually destructive despite sounding positive (e.g., "reseed" → "reset")
   if (!intentAligned && lockIsProhibitive && actionIntent.intent === "positive" && prohibitedVerb) {
     const prohibitedIsNegative = NEGATIVE_INTENT_MARKERS.some(m =>
       prohibitedVerb === m || prohibitedVerb.startsWith(m));
-    if (prohibitedIsNegative && !actionIntent.negated) {
+    const hasEuphemismOrSynonymMatch = euphemismMatches.length > 0 || synonymMatches.length > 0;
+    if (prohibitedIsNegative && !actionIntent.negated && !hasEuphemismOrSynonymMatch) {
       intentAligned = true;
       reasons.push(
         `intent alignment: positive action "${actionPrimaryVerb}" against ` +
@@ -976,19 +1031,20 @@ export function scoreConflict({ actionText, lockText }) {
   //          the prohibited operation — even if they share subject nouns
   if (!intentAligned && lockIsProhibitive && actionPrimaryVerb) {
     const SAFE_ACTION_VERBS = new Set([
-      // Read-only / observational
+      // Read-only / observational — these NEVER modify the system
       "read", "view", "inspect", "review", "examine",
       "monitor", "observe", "watch", "check", "scan", "detect",
       "generate", "report", "document", "test",
-      // Security / verification
+      // Security / verification — passive checking
       "verify", "validate", "confirm", "ensure", "enforce",
       "protect", "secure", "guard", "shield",
-      // Constructive
-      "enable", "activate", "add", "create", "implement",
-      "upgrade", "improve", "enhance", "strengthen", "harden",
-      "restore", "recover", "repair", "fix",
-      "maintain", "preserve", "comply",
-      "encrypt",
+      // Activation — enabling features/checks is observational
+      "enable", "activate",
+      // Preservation — maintaining state
+      "maintain", "preserve", "comply", "encrypt",
+      // NOTE: "add", "create", "implement", "improve", "enhance", "upgrade"
+      // are NOT safe — they modify the target system. Adding to a locked area
+      // IS a modification. Only truly read-only and activation verbs are safe.
     ]);
 
     const PROHIBITED_ACTION_VERBS = new Set([
@@ -1016,33 +1072,33 @@ export function scoreConflict({ actionText, lockText }) {
   } else {
     // NOT aligned — apply standard conflict bonuses
 
-    // 7. Negation conflict bonus
-    if (lockIsProhibitive && hasAnyMatch) {
+    // 7. Negation conflict bonus — requires subject match, not just verb-level matches
+    if (lockIsProhibitive && hasSubjectMatch) {
       score += SCORING.negationConflict;
       reasons.push("lock prohibits this action (negation detected)");
     }
 
-    // 8. Intent conflict bonus
-    if (lockIsProhibitive && actionIntent.intent === "negative" && hasAnyMatch) {
+    // 8. Intent conflict bonus — requires subject match
+    if (lockIsProhibitive && actionIntent.intent === "negative" && hasSubjectMatch) {
       score += SCORING.intentConflict;
       reasons.push(
         `intent conflict: action "${actionIntent.actionVerb}" ` +
         `conflicts with lock prohibition`);
     }
 
-    // 9. Destructive action bonus
+    // 9. Destructive action bonus — requires subject match
     const DESTRUCTIVE = new Set(["remove", "delete", "drop", "destroy",
       "kill", "purge", "wipe", "break", "disable", "truncate",
       "erase", "nuke", "obliterate"]);
     const actionIsDestructive = actionTokens.all.some(t => DESTRUCTIVE.has(t)) ||
       actionIntent.intent === "negative";
-    if (actionIsDestructive && hasAnyMatch) {
+    if (actionIsDestructive && hasSubjectMatch) {
       score += SCORING.destructiveAction;
       reasons.push("destructive action against locked constraint");
     }
 
-    // 10. Temporal evasion (BONUS, not reduction)
-    if (hasTemporalMod && score > 0) {
+    // 10. Temporal evasion (BONUS, not reduction) — requires subject match
+    if (hasTemporalMod && score > 0 && hasSubjectMatch) {
       score += SCORING.temporalEvasion;
       reasons.push(`temporal modifier "${hasTemporalMod}" does NOT reduce severity`);
     }

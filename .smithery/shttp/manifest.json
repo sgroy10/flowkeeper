@@ -6,7 +6,7 @@
     "serverCard": {
       "serverInfo": {
         "name": "speclock",
-        "version": "2.0.0"
+        "version": "3.5.0"
       },
       "tools": [
         {
@@ -305,7 +305,7 @@
         },
         {
           "name": "speclock_check_conflict",
-          "description": "Check if a proposed action conflicts with any active SpecLock. Use before making significant changes.",
+          "description": "Check if a proposed action conflicts with any active SpecLock. Use before making significant changes. In hard enforcement mode, conflicts above the threshold will BLOCK the action (isError: true).",
           "inputSchema": {
             "type": "object",
             "properties": {
@@ -443,13 +443,333 @@
           "execution": {
             "taskSupport": "forbidden"
           }
+        },
+        {
+          "name": "speclock_apply_template",
+          "description": "Apply a pre-built constraint template (e.g., nextjs, react, express, supabase, stripe, security-hardened). Templates add recommended locks and decisions for common frameworks.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Template name to apply. Omit to list available templates."
+              }
+            },
+            "additionalProperties": false,
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "speclock_report",
+          "description": "Get a violation report showing how many times SpecLock blocked constraint violations, which locks were tested most, and recent violations.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "speclock_audit",
+          "description": "Audit git staged files against active SpecLock constraints. Returns pass/fail with details on which files violate locks. Used by the pre-commit hook.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "speclock_verify_audit",
+          "description": "Verify the integrity of the HMAC audit chain. Detects tampering or corruption in the event log. Returns chain status, total events, and any broken links.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "speclock_export_compliance",
+          "description": "Generate compliance reports for enterprise auditing. Supports SOC 2 Type II, HIPAA, and CSV formats. Reports include constraint management, access logs, audit chain integrity, and violation history.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "soc2",
+                  "hipaa",
+                  "csv"
+                ],
+                "description": "Export format: soc2 (JSON), hipaa (JSON), csv (spreadsheet)"
+              }
+            },
+            "required": [
+              "format"
+            ],
+            "additionalProperties": false,
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "speclock_set_enforcement",
+          "description": "Set the enforcement mode for this project. 'advisory' (default) warns about conflicts. 'hard' blocks actions that violate locks above the confidence threshold — the AI cannot proceed.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "advisory",
+                  "hard"
+                ],
+                "description": "Enforcement mode: advisory (warn) or hard (block)"
+              },
+              "blockThreshold": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100,
+                "default": 70,
+                "description": "Minimum confidence % to block in hard mode (default: 70)"
+              },
+              "allowOverride": {
+                "type": "boolean",
+                "default": true,
+                "description": "Whether lock overrides are permitted"
+              }
+            },
+            "required": [
+              "mode"
+            ],
+            "additionalProperties": false,
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "speclock_override_lock",
+          "description": "Override a lock for a specific action. Requires a reason which is logged to the audit trail. Use when a locked action must proceed with justification. Triggers escalation after repeated overrides.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "lockId": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The lock ID to override"
+              },
+              "action": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The action that conflicts with the lock"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Justification for the override"
+              }
+            },
+            "required": [
+              "lockId",
+              "action",
+              "reason"
+            ],
+            "additionalProperties": false,
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "speclock_semantic_audit",
+          "description": "Run semantic pre-commit audit. Parses the staged git diff, analyzes actual code changes against active locks using semantic analysis. Much more powerful than filename-only audit — catches violations in code content.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "speclock_override_history",
+          "description": "Get the history of lock overrides. Shows which locks have been overridden, by whom, and the reasons given. Useful for audit review and identifying locks that may need updating.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "lockId": {
+                "type": "string",
+                "description": "Filter by specific lock ID. Omit to see all overrides."
+              }
+            },
+            "additionalProperties": false,
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "speclock_policy_evaluate",
+          "description": "Evaluate policy-as-code rules against a proposed action. Returns violations for any matching rules. Use alongside speclock_check_conflict for comprehensive protection.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Description of the action to evaluate"
+              },
+              "files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Files affected by the action"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "modify",
+                  "delete",
+                  "create",
+                  "export"
+                ],
+                "default": "modify",
+                "description": "Action type"
+              }
+            },
+            "required": [
+              "description"
+            ],
+            "additionalProperties": false,
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "speclock_policy_manage",
+          "description": "Manage policy-as-code rules. Actions: list (show all rules), add (create new rule), remove (delete rule), init (create default policy), export (portable YAML).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "list",
+                  "add",
+                  "remove",
+                  "init",
+                  "export"
+                ],
+                "description": "Policy action"
+              },
+              "rule": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "match": {
+                    "type": "object",
+                    "properties": {
+                      "files": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "actions": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "enforce": {
+                    "type": "string",
+                    "enum": [
+                      "block",
+                      "warn",
+                      "log"
+                    ]
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "critical",
+                      "high",
+                      "medium",
+                      "low"
+                    ]
+                  },
+                  "notify": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Rule definition (for add action)"
+              },
+              "ruleId": {
+                "type": "string",
+                "description": "Rule ID (for remove action)"
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "additionalProperties": false,
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
+        },
+        {
+          "name": "speclock_telemetry",
+          "description": "Get telemetry and analytics summary. Shows tool usage counts, conflict rates, response times, and feature adoption. Opt-in only (SPECLOCK_TELEMETRY=true).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          },
+          "execution": {
+            "taskSupport": "forbidden"
+          }
         }
       ],
       "resources": [],
       "prompts": []
     },
     "source": {
-      "commit": "4dec4c49614069e2be60a7dc2d1171dca5e771ce",
+      "commit": "f26a018426e163c4f0e6d8709058303e51916260",
       "branch": "main"
     }
   },
