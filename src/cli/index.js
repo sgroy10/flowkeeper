@@ -23,6 +23,12 @@ import {
   verifyAuditChain,
   exportCompliance,
   getLicenseInfo,
+  enforceConflictCheck,
+  setEnforcementMode,
+  overrideLock,
+  getOverrideHistory,
+  getEnforcementConfig,
+  semanticAudit,
 } from "../core/engine.js";
 import { generateContext } from "../core/context.js";
 import { readBrain } from "../core/storage.js";
@@ -82,7 +88,7 @@ function refreshContext(root) {
 
 function printHelp() {
   console.log(`
-SpecLock v2.1.1 — AI Constraint Engine (Enterprise)
+SpecLock v2.5.0 — AI Constraint Engine (Hard Enforcement + Semantic Pre-Commit)
 Developed by Sandeep Roy (github.com/sgroy10)
 
 Usage: speclock <command> [options]
@@ -105,7 +111,11 @@ Commands:
   hook install                    Install git pre-commit hook
   hook remove                     Remove git pre-commit hook
   audit                           Audit staged files against locks
+  audit-semantic                  Semantic audit: analyze code changes vs locks
   audit-verify                    Verify HMAC audit chain integrity
+  enforce <advisory|hard>         Set enforcement mode (advisory=warn, hard=block)
+  override <lockId> <reason>      Override a lock with justification
+  overrides [--lock <id>]         Show override history
   export --format <soc2|hipaa|csv>  Export compliance report
   license                         Show license tier and usage info
   context                         Generate and print context pack
@@ -385,10 +395,12 @@ Tip: When starting a new chat, tell the AI:
       console.error('Usage: speclock check "what you plan to do"');
       process.exit(1);
     }
-    const result = checkConflict(root, text);
+    const result = enforceConflictCheck(root, text);
     if (result.hasConflict) {
-      console.log(`\nCONFLICT DETECTED`);
+      console.log(`\n${result.blocked ? "BLOCKED" : "CONFLICT DETECTED"}`);
       console.log("=".repeat(50));
+      console.log(`Mode: ${result.mode} | Threshold: ${result.threshold}%`);
+      console.log("");
       for (const lock of result.conflictingLocks) {
         console.log(`  [${lock.level}] "${lock.text}"`);
         console.log(`  Confidence: ${lock.confidence}%`);
@@ -400,6 +412,9 @@ Tip: When starting a new chat, tell the AI:
         console.log("");
       }
       console.log(result.analysis);
+      if (result.blocked) {
+        process.exit(1);
+      }
     } else {
       console.log(`No conflicts found. Safe to proceed with: "${text}"`);
     }
@@ -672,6 +687,95 @@ Tip: When starting a new chat, tell the AI:
     }
     console.log(`\nFeatures: ${info.features.join(", ")}`);
     return;
+  }
+
+  // --- ENFORCE (v2.5) ---
+  if (cmd === "enforce") {
+    const mode = args[0];
+    if (!mode || (mode !== "advisory" && mode !== "hard")) {
+      console.error("Usage: speclock enforce <advisory|hard> [--threshold 70]");
+      process.exit(1);
+    }
+    const flags = parseFlags(args.slice(1));
+    const options = {};
+    if (flags.threshold) options.blockThreshold = parseInt(flags.threshold, 10);
+    if (flags.override !== undefined) options.allowOverride = flags.override !== "false";
+    const result = setEnforcementMode(root, mode, options);
+    if (!result.success) {
+      console.error(result.error);
+      process.exit(1);
+    }
+    console.log(`\nEnforcement mode: ${result.mode.toUpperCase()}`);
+    console.log(`Block threshold: ${result.config.blockThreshold}%`);
+    console.log(`Overrides: ${result.config.allowOverride ? "allowed" : "disabled"}`);
+    if (result.mode === "hard") {
+      console.log(`\nHard mode active — conflicts above ${result.config.blockThreshold}% confidence will BLOCK actions.`);
+    }
+    return;
+  }
+
+  // --- OVERRIDE (v2.5) ---
+  if (cmd === "override") {
+    const lockId = args[0];
+    const reason = args.slice(1).join(" ");
+    if (!lockId || !reason) {
+      console.error("Usage: speclock override <lockId> <reason>");
+      process.exit(1);
+    }
+    const result = overrideLock(root, lockId, "(CLI override)", reason);
+    if (!result.success) {
+      console.error(result.error);
+      process.exit(1);
+    }
+    console.log(`Lock overridden: "${result.lockText}"`);
+    console.log(`Override count: ${result.overrideCount}`);
+    if (result.escalated) {
+      console.log(`\n${result.escalationMessage}`);
+    }
+    return;
+  }
+
+  // --- OVERRIDES (v2.5) ---
+  if (cmd === "overrides") {
+    const flags = parseFlags(args);
+    const result = getOverrideHistory(root, flags.lock || null);
+    if (result.total === 0) {
+      console.log("No overrides recorded.");
+      return;
+    }
+    console.log(`\nOverride History (${result.total})`);
+    console.log("=".repeat(50));
+    for (const o of result.overrides) {
+      console.log(`[${o.at.substring(0, 19)}] Lock: "${o.lockText}"`);
+      console.log(`  Action: ${o.action}`);
+      console.log(`  Reason: ${o.reason}`);
+      console.log("");
+    }
+    return;
+  }
+
+  // --- AUDIT-SEMANTIC (v2.5) ---
+  if (cmd === "audit-semantic") {
+    const result = semanticAudit(root);
+    console.log(`\nSemantic Pre-Commit Audit`);
+    console.log("=".repeat(50));
+    console.log(`Mode: ${result.mode} | Threshold: ${result.threshold}%`);
+    console.log(`Files analyzed: ${result.filesChecked}`);
+    console.log(`Active locks: ${result.activeLocks}`);
+    console.log(`Violations: ${result.violations.length}`);
+    if (result.violations.length > 0) {
+      console.log("");
+      for (const v of result.violations) {
+        console.log(`  [${v.level}] ${v.file} (confidence: ${v.confidence}%)`);
+        console.log(`    Lock: "${v.lockText}"`);
+        console.log(`    Reason: ${v.reason}`);
+        if (v.addedLines !== undefined) {
+          console.log(`    Changes: +${v.addedLines} / -${v.removedLines} lines`);
+        }
+      }
+    }
+    console.log(`\n${result.message}`);
+    process.exit(result.blocked ? 1 : 0);
   }
 
   // --- STATUS ---

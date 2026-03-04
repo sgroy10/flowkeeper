@@ -27,6 +27,12 @@ import {
   exportCompliance,
   checkLimits,
   getLicenseInfo,
+  enforceConflictCheck,
+  setEnforcementMode,
+  overrideLock,
+  getOverrideHistory,
+  getEnforcementConfig,
+  semanticAudit,
 } from "../core/engine.js";
 import { generateContext, generateContextPack } from "../core/context.js";
 import {
@@ -61,7 +67,7 @@ const PROJECT_ROOT =
   args.project || process.env.SPECLOCK_PROJECT_ROOT || process.cwd();
 
 // --- MCP Server ---
-const VERSION = "2.1.1";
+const VERSION = "2.5.0";
 const AUTHOR = "Sandeep Roy";
 
 const server = new McpServer(
@@ -421,10 +427,10 @@ server.tool(
 // CONTINUITY PROTECTION TOOLS
 // ========================================
 
-// Tool 12: speclock_check_conflict
+// Tool 12: speclock_check_conflict (v2.5: uses enforcer — hard mode returns isError)
 server.tool(
   "speclock_check_conflict",
-  "Check if a proposed action conflicts with any active SpecLock. Use before making significant changes.",
+  "Check if a proposed action conflicts with any active SpecLock. Use before making significant changes. In hard enforcement mode, conflicts above the threshold will BLOCK the action (isError: true).",
   {
     proposedAction: z
       .string()
@@ -432,7 +438,28 @@ server.tool(
       .describe("Description of the action you plan to take"),
   },
   async ({ proposedAction }) => {
-    const result = await checkConflictAsync(PROJECT_ROOT, proposedAction);
+    // Try LLM-enhanced check first, fall back to heuristic enforcer
+    let result;
+    try {
+      const { llmCheckConflict } = await import("../core/llm-checker.js");
+      const llmResult = await llmCheckConflict(PROJECT_ROOT, proposedAction);
+      if (llmResult) {
+        result = llmResult;
+      }
+    } catch (_) {}
+
+    if (!result) {
+      result = enforceConflictCheck(PROJECT_ROOT, proposedAction);
+    }
+
+    // In hard mode with blocking conflict, return isError: true
+    if (result.blocked) {
+      return {
+        content: [{ type: "text", text: result.analysis }],
+        isError: true,
+      };
+    }
+
     return {
       content: [{ type: "text", text: result.analysis }],
     };
@@ -954,6 +981,158 @@ server.tool(
 
     return {
       content: [{ type: "text", text: `## Compliance Export (${format.toUpperCase()})\n\n\`\`\`json\n${JSON.stringify(result.data, null, 2)}\n\`\`\`` }],
+    };
+  }
+);
+
+// ========================================
+// HARD ENFORCEMENT TOOLS (v2.5)
+// ========================================
+
+// Tool 25: speclock_set_enforcement
+server.tool(
+  "speclock_set_enforcement",
+  "Set the enforcement mode for this project. 'advisory' (default) warns about conflicts. 'hard' blocks actions that violate locks above the confidence threshold — the AI cannot proceed.",
+  {
+    mode: z
+      .enum(["advisory", "hard"])
+      .describe("Enforcement mode: advisory (warn) or hard (block)"),
+    blockThreshold: z
+      .number()
+      .int()
+      .min(0)
+      .max(100)
+      .optional()
+      .default(70)
+      .describe("Minimum confidence % to block in hard mode (default: 70)"),
+    allowOverride: z
+      .boolean()
+      .optional()
+      .default(true)
+      .describe("Whether lock overrides are permitted"),
+  },
+  async ({ mode, blockThreshold, allowOverride }) => {
+    const result = setEnforcementMode(PROJECT_ROOT, mode, { blockThreshold, allowOverride });
+    if (!result.success) {
+      return {
+        content: [{ type: "text", text: result.error }],
+        isError: true,
+      };
+    }
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Enforcement mode set to **${mode}**. Threshold: ${result.config.blockThreshold}%. Overrides: ${result.config.allowOverride ? "allowed" : "disabled"}.`,
+        },
+      ],
+    };
+  }
+);
+
+// Tool 26: speclock_override_lock
+server.tool(
+  "speclock_override_lock",
+  "Override a lock for a specific action. Requires a reason which is logged to the audit trail. Use when a locked action must proceed with justification. Triggers escalation after repeated overrides.",
+  {
+    lockId: z.string().min(1).describe("The lock ID to override"),
+    action: z.string().min(1).describe("The action that conflicts with the lock"),
+    reason: z.string().min(1).describe("Justification for the override"),
+  },
+  async ({ lockId, action, reason }) => {
+    const result = overrideLock(PROJECT_ROOT, lockId, action, reason);
+    if (!result.success) {
+      return {
+        content: [{ type: "text", text: result.error }],
+        isError: true,
+      };
+    }
+
+    const parts = [
+      `Lock overridden: "${result.lockText}"`,
+      `Override count: ${result.overrideCount}`,
+      `Reason: ${reason}`,
+    ];
+
+    if (result.escalated) {
+      parts.push("", result.escalationMessage);
+    }
+
+    return {
+      content: [{ type: "text", text: parts.join("\n") }],
+    };
+  }
+);
+
+// Tool 27: speclock_semantic_audit
+server.tool(
+  "speclock_semantic_audit",
+  "Run semantic pre-commit audit. Parses the staged git diff, analyzes actual code changes against active locks using semantic analysis. Much more powerful than filename-only audit — catches violations in code content.",
+  {},
+  async () => {
+    const result = semanticAudit(PROJECT_ROOT);
+
+    if (result.passed) {
+      return {
+        content: [{ type: "text", text: result.message }],
+      };
+    }
+
+    const formatted = result.violations
+      .map((v) => {
+        const lines = [`- [${v.level}] **${v.file}** (confidence: ${v.confidence}%)`];
+        lines.push(`  Lock: "${v.lockText}"`);
+        lines.push(`  Reason: ${v.reason}`);
+        if (v.addedLines) lines.push(`  Changes: +${v.addedLines} / -${v.removedLines} lines`);
+        return lines.join("\n");
+      })
+      .join("\n\n");
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `## Semantic Audit Result\n\nMode: ${result.mode} | Threshold: ${result.threshold}%\n\n${formatted}\n\n${result.message}`,
+        },
+      ],
+      isError: result.blocked || false,
+    };
+  }
+);
+
+// Tool 28: speclock_override_history
+server.tool(
+  "speclock_override_history",
+  "Get the history of lock overrides. Shows which locks have been overridden, by whom, and the reasons given. Useful for audit review and identifying locks that may need updating.",
+  {
+    lockId: z
+      .string()
+      .optional()
+      .describe("Filter by specific lock ID. Omit to see all overrides."),
+  },
+  async ({ lockId }) => {
+    const result = getOverrideHistory(PROJECT_ROOT, lockId);
+
+    if (result.total === 0) {
+      return {
+        content: [{ type: "text", text: "No overrides recorded." }],
+      };
+    }
+
+    const formatted = result.overrides
+      .map(
+        (o) =>
+          `- [${o.at.substring(0, 19)}] Lock: "${o.lockText}" (${o.lockId})\n  Action: ${o.action}\n  Reason: ${o.reason}`
+      )
+      .join("\n\n");
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `## Override History (${result.total})\n\n${formatted}`,
+        },
+      ],
     };
   }
 );

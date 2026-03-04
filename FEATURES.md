@@ -66,7 +66,7 @@ URL: https://speclock-mcp-production.up.railway.app/mcp
   }
 }
 ```
-The AI tool runs the MCP server locally. 24 tools available via MCP protocol. Claude Code follows server instructions automatically — zero config.
+The AI tool runs the MCP server locally. 28 tools available via MCP protocol. Claude Code follows server instructions automatically — zero config.
 
 ### Mode 3: npm File-Based (Bolt.new, Aider, any platform with npm)
 ```bash
@@ -127,7 +127,7 @@ Bolt: "All planning logged to Speclock for project continuity!"
 
 ---
 
-## 24 MCP Tools
+## 28 MCP Tools
 
 ### Memory Management (8 tools)
 | Tool | Purpose |
@@ -181,6 +181,14 @@ Bolt: "All planning logged to Speclock for project continuity!"
 | `speclock_verify_audit` | Verify HMAC audit chain integrity — detect tampering |
 | `speclock_export_compliance` | Generate SOC 2 / HIPAA / CSV compliance reports |
 
+### Hard Enforcement (4 tools — v2.5)
+| Tool | Purpose |
+|------|---------|
+| `speclock_set_enforcement` | Set enforcement mode: advisory (warn) or hard (block) |
+| `speclock_override_lock` | Override a lock with justification — logged to audit trail |
+| `speclock_semantic_audit` | Semantic pre-commit: analyze code changes vs locks |
+| `speclock_override_history` | View lock override history for audit review |
+
 ---
 
 ## CLI Commands
@@ -222,6 +230,12 @@ npx speclock export --format soc2           # SOC 2 compliance export
 npx speclock export --format hipaa          # HIPAA compliance export
 npx speclock export --format csv            # CSV export for auditors
 npx speclock license                        # Show license tier and usage
+
+# Hard Enforcement (v2.5)
+npx speclock enforce <advisory|hard>   # Set enforcement mode
+npx speclock override <lockId> <reason>  # Override a lock with justification
+npx speclock overrides                 # Show override history
+npx speclock audit-semantic            # Semantic pre-commit audit
 
 # Information
 npx speclock status                         # Brain summary
@@ -304,6 +318,34 @@ Runs `speclock audit` against changed files, posts violation report as PR commen
 
 ---
 
+## Hard Enforcement (v2.5)
+
+SpecLock v2.5 introduces **hard enforcement mode** — moving beyond advisory warnings to actively blocking constraint-violating changes before they land.
+
+### Advisory vs Hard Mode
+- **Advisory mode** (default): Lock violations produce warnings but do not block. The AI is informed of the conflict and expected to respect it.
+- **Hard mode**: Lock violations above the block threshold are **rejected outright**. The change cannot proceed without an explicit override.
+
+Switch modes with `npx speclock enforce hard` or `npx speclock enforce advisory`, or via the `speclock_set_enforcement` MCP tool.
+
+### Block Threshold
+The block threshold is configurable (default **70%** similarity score). Any proposed action that matches an active lock at or above this threshold is blocked in hard mode. Adjust the threshold in `.speclock/brain.json` under `enforcement.blockThreshold` to tune sensitivity for your project.
+
+### Override Mechanism
+When a change is blocked, it can be overridden by providing a justification:
+```bash
+npx speclock override <lockId> "Reason for override"
+```
+Every override is **logged to the HMAC-signed audit trail** with the lock ID, the reason, a timestamp, and the actor. Overrides do not remove the lock — they grant a one-time exception.
+
+### Escalation
+If a single lock accumulates **3 or more overrides**, SpecLock automatically creates a pinned review note flagging the lock for team discussion. This prevents "override fatigue" from silently eroding constraints over time.
+
+### Semantic Pre-Commit Audit
+The `speclock_semantic_audit` tool (and `npx speclock audit-semantic` CLI) parses the **actual git diff** — not just filenames — and runs the semantic conflict engine against every active lock. This catches violations hidden inside code changes that filename-only checks would miss, such as a config value change that disables a locked security feature.
+
+---
+
 ## Platform Compatibility
 
 | Platform | MCP Support | SpecLock Mode | Setup Time | Instructions Needed? |
@@ -330,7 +372,7 @@ Runs `speclock audit` against changed files, posts violation report as PR commen
 └──────────────┬──────────────────┬────────────────────┘
                │                  │
      MCP Protocol          File-Based (npm)
-    (24 tool calls)      (reads SPECLOCK.md +
+    (28 tool calls)      (reads SPECLOCK.md +
                         .speclock/context/latest.md,
                          runs CLI commands)
                │                  │
@@ -420,4 +462,4 @@ AI:   Unlocked. Proceeding with auth file changes.
 
 ---
 
-*SpecLock v2.1.0 — Semantic conflict detection + enterprise audit & compliance. 100% detection, 0% false positives. HMAC audit chain, SOC 2/HIPAA exports.*
+*SpecLock v2.5.0 — Semantic conflict detection + enterprise audit & compliance + hard enforcement. 100% detection, 0% false positives. HMAC audit chain, SOC 2/HIPAA exports, advisory/hard enforcement modes, override audit trail, semantic pre-commit.*

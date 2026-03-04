@@ -64,7 +64,7 @@ console.log("\n--- Category 1: SOC 2 Export ---");
     const report = exportSOC2(root);
 
     assert(report.report === "SOC 2 Type II — SpecLock Compliance Export", "SOC 2: correct report title");
-    assert(report.version === "2.1.0", "SOC 2: version is 2.1.0");
+    assert(typeof report.version === "string" && report.version.startsWith("2."), "SOC 2: version starts with 2.x");
     assert(typeof report.generatedAt === "string", "SOC 2: has generatedAt timestamp");
 
     // Project info

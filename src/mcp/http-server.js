@@ -30,6 +30,11 @@ import {
   auditStagedFiles,
   verifyAuditChain,
   exportCompliance,
+  enforceConflictCheck,
+  setEnforcementMode,
+  overrideLock,
+  getOverrideHistory,
+  semanticAudit,
 } from "../core/engine.js";
 import { generateContext, generateContextPack } from "../core/context.js";
 import {
@@ -48,7 +53,7 @@ import {
 } from "../core/git.js";
 
 const PROJECT_ROOT = process.env.SPECLOCK_PROJECT_ROOT || process.cwd();
-const VERSION = "2.1.1";
+const VERSION = "2.5.0";
 const AUTHOR = "Sandeep Roy";
 const START_TIME = Date.now();
 
@@ -219,11 +224,14 @@ function createSpecLockServer() {
     return { content: [{ type: "text", text: events.length ? JSON.stringify(events, null, 2) : "No matching events." }] };
   });
 
-  // Tool 12: speclock_check_conflict
-  server.tool("speclock_check_conflict", "Check if a proposed action conflicts with any active SpecLock.", { proposedAction: z.string().min(1).describe("Description of the action") }, async ({ proposedAction }) => {
+  // Tool 12: speclock_check_conflict (v2.5: uses enforcer)
+  server.tool("speclock_check_conflict", "Check if a proposed action conflicts with any active SpecLock. In hard mode, blocks above threshold.", { proposedAction: z.string().min(1).describe("Description of the action") }, async ({ proposedAction }) => {
     ensureInit(PROJECT_ROOT);
-    const result = await checkConflictAsync(PROJECT_ROOT, proposedAction);
-    return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    const result = enforceConflictCheck(PROJECT_ROOT, proposedAction);
+    if (result.blocked) {
+      return { content: [{ type: "text", text: result.analysis }], isError: true };
+    }
+    return { content: [{ type: "text", text: result.analysis }] };
   });
 
   // Tool 13: speclock_session_briefing
@@ -352,6 +360,35 @@ function createSpecLockServer() {
     if (result.error) return { content: [{ type: "text", text: result.error }], isError: true };
     const output = format === "csv" ? result.data : JSON.stringify(result.data, null, 2);
     return { content: [{ type: "text", text: output }] };
+  });
+
+  // Tool 25: speclock_set_enforcement (v2.5)
+  server.tool("speclock_set_enforcement", "Set enforcement mode: advisory (warn) or hard (block).", { mode: z.enum(["advisory", "hard"]).describe("Enforcement mode"), blockThreshold: z.number().int().min(0).max(100).optional().default(70).describe("Block threshold %") }, async ({ mode, blockThreshold }) => {
+    const result = setEnforcementMode(PROJECT_ROOT, mode, { blockThreshold });
+    if (!result.success) return { content: [{ type: "text", text: result.error }], isError: true };
+    return { content: [{ type: "text", text: `Enforcement: ${mode} (threshold: ${result.config.blockThreshold}%)` }] };
+  });
+
+  // Tool 26: speclock_override_lock (v2.5)
+  server.tool("speclock_override_lock", "Override a lock with justification. Logged to audit trail.", { lockId: z.string().min(1), action: z.string().min(1), reason: z.string().min(1) }, async ({ lockId, action, reason }) => {
+    const result = overrideLock(PROJECT_ROOT, lockId, action, reason);
+    if (!result.success) return { content: [{ type: "text", text: result.error }], isError: true };
+    const msg = result.escalated ? `\n${result.escalationMessage}` : "";
+    return { content: [{ type: "text", text: `Override: "${result.lockText}" (${result.overrideCount}x)${msg}` }] };
+  });
+
+  // Tool 27: speclock_semantic_audit (v2.5)
+  server.tool("speclock_semantic_audit", "Semantic pre-commit: analyzes code changes vs locks.", {}, async () => {
+    const result = semanticAudit(PROJECT_ROOT);
+    return { content: [{ type: "text", text: result.message }], isError: result.blocked || false };
+  });
+
+  // Tool 28: speclock_override_history (v2.5)
+  server.tool("speclock_override_history", "Show lock override history.", { lockId: z.string().optional() }, async ({ lockId }) => {
+    const result = getOverrideHistory(PROJECT_ROOT, lockId);
+    if (result.total === 0) return { content: [{ type: "text", text: "No overrides recorded." }] };
+    const lines = result.overrides.map(o => `[${o.at.substring(0,19)}] "${o.lockText}" — ${o.reason}`).join("\n");
+    return { content: [{ type: "text", text: `Overrides (${result.total}):\n${lines}` }] };
   });
 
   return server;

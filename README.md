@@ -58,6 +58,7 @@ No other tool does this. Not Claude's native memory. Not Mem0. Not CLAUDE.md fil
 | Git-aware (checkpoints, rollback) | No | No | No | **Yes** |
 | Drift detection | No | No | No | **Yes — scans changes against locks** |
 | CI/CD integration | No | No | No | **Yes — GitHub Actions** |
+| **Hard enforcement (block violations)** | No | No | No | **Yes — hard mode blocks above threshold** |
 | Multi-agent timeline | No | No | No | **Yes** |
 | Cross-platform | Claude only | MCP only | Tool-specific | **Universal (MCP + npm)** |
 
@@ -192,10 +193,10 @@ Result:  NO CONFLICT (confidence: 7%)
 | Mode | Platforms | How It Works |
 |------|-----------|--------------|
 | **MCP Remote** | Lovable, bolt.diy, Base44 | Connect via URL — no install needed |
-| **MCP Local** | Claude Code, Cursor, Windsurf, Cline | `npx speclock serve` — 24 tools via MCP |
+| **MCP Local** | Claude Code, Cursor, Windsurf, Cline | `npx speclock serve` — 28 tools via MCP |
 | **npm File-Based** | Bolt.new, Aider, Rocket.new | `npx speclock setup` — AI reads SPECLOCK.md + uses CLI |
 
-## 24 MCP Tools
+## 28 MCP Tools
 
 ### Memory Management
 | Tool | Purpose |
@@ -248,6 +249,14 @@ Result:  NO CONFLICT (confidence: 7%)
 |------|---------|
 | `speclock_verify_audit` | Verify HMAC audit chain integrity — tamper detection |
 | `speclock_export_compliance` | Generate SOC 2 / HIPAA / CSV compliance reports |
+
+### Hard Enforcement (v2.5)
+| Tool | Purpose |
+|------|---------|
+| `speclock_set_enforcement` | Set enforcement mode: advisory (warn) or hard (block) |
+| `speclock_override_lock` | Override a lock with justification — logged to audit trail |
+| `speclock_semantic_audit` | Semantic pre-commit: analyze code changes vs locks |
+| `speclock_override_history` | View lock override history for audit review |
 
 ## Auto-Guard: Locks That Actually Work
 
@@ -317,6 +326,12 @@ speclock audit-verify                  # Verify HMAC audit chain integrity
 speclock export --format <soc2|hipaa|csv>  # Compliance export
 speclock license                       # Show license tier and usage
 
+# Hard Enforcement (v2.5)
+speclock enforce <advisory|hard>       # Set enforcement mode
+speclock override <lockId> <reason>    # Override a lock with justification
+speclock overrides [--lock <id>]       # Show override history
+speclock audit-semantic                # Semantic pre-commit audit
+
 # Other
 speclock status                        # Show brain summary
 speclock serve [--project <path>]      # Start MCP server
@@ -372,6 +387,19 @@ SOC 2 reports include: constraint change history, access logs, decision audit tr
 ```
 Audits changed files against locks, posts PR comments, fails workflow on violations.
 
+## Hard Enforcement (v2.5)
+
+### Advisory vs Hard Mode
+```
+Advisory mode (default): AI gets a warning, decides what to do
+Hard mode:               AI is BLOCKED — cannot proceed (MCP returns isError: true)
+```
+
+- **Block threshold**: Configurable (default 70%). Only HIGH confidence conflicts block.
+- **Override mechanism**: `speclock_override_lock` with a reason (logged to audit trail)
+- **Escalation**: Lock overridden 3+ times → auto-creates a review note
+- **Semantic pre-commit**: Parses actual git diff content, runs semantic analysis against locks
+
 ---
 
 ## Architecture
@@ -382,7 +410,7 @@ Audits changed files against locks, posts PR comments, fails workflow on violati
 └──────────────┬──────────────────┬────────────────────┘
                │                  │
      MCP Protocol          File-Based (npm)
-    (24 tool calls)      (reads SPECLOCK.md +
+    (28 tool calls)      (reads SPECLOCK.md +
                         .speclock/context/latest.md,
                          runs CLI commands)
                │                  │
@@ -419,4 +447,4 @@ MIT License - see [LICENSE](LICENSE) file.
 
 ---
 
-*SpecLock v2.1.0 — Semantic conflict detection + enterprise audit & compliance. 100% detection, 0% false positives. HMAC audit chain, SOC 2/HIPAA exports. Because remembering isn't enough — AI needs to respect boundaries.*
+*SpecLock v2.5.0 — Semantic conflict detection + enterprise audit & compliance. 100% detection, 0% false positives. HMAC audit chain, SOC 2/HIPAA exports. Hard enforcement mode. Because remembering isn't enough — AI needs to respect boundaries.*

@@ -1,7 +1,7 @@
 {
   "name": "speclock",
-  "version": "2.1.1",
-  "description": "AI constraint engine with semantic conflict detection, HMAC audit chain, SOC 2/HIPAA compliance exports. 100% detection, 0% false positives. 24 MCP tools + CLI. Enterprise-ready memory + enforcement.",
+  "version": "2.5.0",
+  "description": "AI constraint engine with hard enforcement, semantic pre-commit, HMAC audit chain, SOC 2/HIPAA compliance. 100% detection, 0% false positives. 28 MCP tools + CLI. Enterprise-ready.",
   "type": "module",
   "main": "src/mcp/server.js",
   "bin": {
@@ -64,6 +64,7 @@
     "LICENSE"
   ],
   "devDependencies": {
-    "esbuild": "^0.27.3"
+    "esbuild": "^0.27.3",
+    "jest": "^30.2.0"
   }
 }
