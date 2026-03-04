@@ -1,103 +1,87 @@
-# SpecLock
+<p align="center">
+  <img src="https://img.shields.io/badge/🔒-SpecLock-000000?style=for-the-badge&labelColor=000000&color=4F46E5" alt="SpecLock" height="40" />
+</p>
 
-**AI Constraint Engine** — Memory + enforcement for AI coding tools. The only solution that makes your AI **respect boundaries**, not just remember things.
+<h3 align="center">Your AI keeps breaking things you told it not to touch.<br/>SpecLock makes it stop.</h3>
 
-> Developed by **Sandeep Roy** ([github.com/sgroy10](https://github.com/sgroy10))
+<p align="center">
+  <a href="https://www.npmjs.com/package/speclock"><img src="https://img.shields.io/npm/v/speclock.svg?style=flat-square&color=4F46E5" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/speclock"><img src="https://img.shields.io/npm/dm/speclock.svg?style=flat-square&color=22C55E" alt="npm downloads" /></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="MIT License" /></a>
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-31_tools-green.svg?style=flat-square" alt="MCP 31 tools" /></a>
+</p>
 
-**Website**: [sgroy10.github.io/speclock](https://sgroy10.github.io/speclock/) | **npm**: [npmjs.com/package/speclock](https://www.npmjs.com/package/speclock) | **Smithery**: [smithery.ai/servers/sgroy10/speclock](https://smithery.ai/servers/sgroy10/speclock)
-
-[![npm version](https://img.shields.io/npm/v/speclock.svg)](https://www.npmjs.com/package/speclock)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)
+<p align="center">
+  <a href="https://sgroy10.github.io/speclock/">Website</a> · <a href="https://www.npmjs.com/package/speclock">npm</a> · <a href="https://smithery.ai/servers/sgroy10/speclock">Smithery</a> · <a href="https://github.com/sgroy10/speclock">GitHub</a>
+</p>
 
 ---
 
-## The Problem
-
-AI tools now have memory. Claude Code has auto-memory. Cursor has Memory Bank. Mem0 exists.
-
-**But memory without enforcement is dangerous.**
-
-- Your AI remembers you use PostgreSQL — then switches to MongoDB because it "seemed better"
-- Your AI remembers your auth setup — then rewrites it while "fixing" a bug
-- Your AI remembers your constraints — then ignores them when they're inconvenient
-- You said "never touch auth files" 3 sessions ago — the AI doesn't care
-
-**Remembering is not the same as respecting.** AI tools need guardrails, not just memory.
-
-## The Solution
-
-SpecLock adds **active constraint enforcement** on top of persistent memory. When your AI tries to break something you locked, SpecLock **stops it before the damage is done**.
-
 ```
-You:    "Don't ever touch the auth files"
-AI:     🔒 Locked: "Never modify auth files"
+You:    "Never touch the auth system"
+AI:     🔒 Locked.
 
-... 5 sessions later ...
+         ... 5 sessions later ...
 
 You:    "Add social login to the login page"
-AI:     ⚠️ CONFLICT: This violates your lock "Never modify auth files"
-        Should I proceed or find another approach?
+AI:     ⚠️  BLOCKED — violates lock "Never touch the auth system"
+        Matched: auth → authentication (synonym), login → auth (concept)
+        Confidence: 100%
+        Should I find another approach?
 ```
 
-No other tool does this. Not Claude's native memory. Not Mem0. Not CLAUDE.md files.
+**601 tests. 95.65% adversarial detection. 0% false positives. Zero LLM API calls. Pure JavaScript.**
 
-## How SpecLock Is Different
+---
 
-| Feature | Claude Native Memory | Mem0 | CLAUDE.md / .cursorrules | **SpecLock** |
-|---------|---------------------|------|--------------------------|--------------|
-| Remembers context | Yes | Yes | Manual | **Yes** |
-| **Stops the AI from breaking things** | No | No | No | **Yes — active enforcement** |
-| **Semantic conflict detection** | No | No | No | **Yes — semantic engine v2 (100% detection, 0% false positives)** |
-| **Tamper-proof audit trail** | No | No | No | **Yes — HMAC-SHA256 hash chain** |
-| **Compliance exports** | No | No | No | **Yes — SOC 2, HIPAA, CSV** |
-| Works on Bolt.new | No | No | No | **Yes — npm file-based mode** |
-| Works on Lovable | No | No | No | **Yes — MCP remote** |
-| Structured decisions/locks | No | Tags only | Flat text | **Goals, locks, decisions, changes** |
-| Git-aware (checkpoints, rollback) | No | No | No | **Yes** |
-| Drift detection | No | No | No | **Yes — scans changes against locks** |
-| CI/CD integration | No | No | No | **Yes — GitHub Actions** |
-| **Hard enforcement (block violations)** | No | No | No | **Yes — hard mode blocks above threshold** |
-| **API Key Auth + RBAC** | No | No | No | **Yes** |
-| **Encrypted Storage (AES-256)** | No | No | No | **Yes** |
-| **Policy-as-Code DSL** | No | No | No | **Yes — declarative YAML rules** |
-| **OAuth/OIDC SSO** | No | No | No | **Yes — Okta, Azure AD, Auth0** |
-| **Admin Dashboard** | No | No | No | **Yes — real-time web UI** |
-| **Telemetry & Analytics** | No | No | No | **Yes — opt-in usage insights** |
-| Multi-agent timeline | No | No | No | **Yes** |
-| Cross-platform | Claude only | MCP only | Tool-specific | **Universal (MCP + npm)** |
-
-**Other tools remember. SpecLock enforces.**
-
-## Quick Start
-
-### Bolt.new / Aider / Any npm Platform (No MCP Needed)
-
-Just tell the AI:
-
-```
-"Install speclock and set up project memory"
-```
-
-Or run it yourself:
+## Install
 
 ```bash
 npx speclock setup --goal "Build my app"
 ```
 
-**That's it.** SpecLock creates `SPECLOCK.md`, injects a marker into `package.json`, and generates `.speclock/context/latest.md`. The AI reads these automatically and follows the rules. When the AI returns in a new session, it sees the SpecLock marker in `package.json` and knows to check the rules before making changes.
+That's it. One command. Works everywhere — Bolt.new, Claude Code, Cursor, Lovable, Windsurf, Cline, Aider.
 
-### Lovable (MCP Remote — No Install)
+## The Problem
 
-1. Go to **Settings → Connectors → Personal connectors → New MCP server**
-2. Enter URL: `https://speclock-mcp-production.up.railway.app/mcp` — No auth
-3. Paste [Project Instructions](#project-instructions) into Knowledge
+AI coding tools have memory now. Claude Code has `CLAUDE.md`. Cursor has `.cursorrules`. Mem0 exists.
 
-### Claude Code (MCP Local)
+**But memory without enforcement is useless.**
 
-Add to `.claude/settings.json` or `.mcp.json`:
+Your AI *remembers* you use PostgreSQL — then switches to MongoDB because it "seemed better." Your AI *remembers* your auth setup — then rewrites it while "fixing" a bug. You said "never touch the payment logic" 3 sessions ago — the AI doesn't care.
 
+**Remembering is not respecting.** No existing tool stops the AI from breaking what you locked.
+
+## How It Works
+
+You set constraints. SpecLock enforces them — across sessions, across tools, across teams.
+
+```
+speclock lock "Never modify auth files"           → auto-guards src/auth/*.ts
+speclock lock "Database must stay PostgreSQL"      → catches "migrate to MongoDB"
+speclock lock "Never delete patient records"       → catches "clean up old data"
+speclock lock "Don't touch the payment flow"       → catches "streamline checkout"
+```
+
+The semantic engine doesn't do keyword matching. It understands:
+- **"clean up old data"** = deletion (euphemism detection)
+- **"streamline checkout"** = modify payment flow (synonym + concept mapping)
+- **"temporarily disable logging"** = disable logging (temporal evasion detection)
+- **"Update UI and also drop the users table"** = hidden violation (compound splitter)
+
+And it knows what's safe:
+- **"Enable audit logging"** when the lock says "Never *disable* audit logging" → **no conflict** (intent alignment)
+
+## Quick Start by Platform
+
+### Bolt.new / Aider / Any npm Platform
+```bash
+npx speclock setup --goal "Build my app" --template nextjs
+```
+Creates `SPECLOCK.md`, injects rules into `package.json`, generates `.speclock/context/latest.md`. The AI reads these automatically.
+
+### Claude Code
+Add to `.mcp.json`:
 ```json
 {
   "mcpServers": {
@@ -110,342 +94,120 @@ Add to `.claude/settings.json` or `.mcp.json`:
 ```
 
 ### Cursor / Windsurf / Cline
+Same config — add to `.cursor/mcp.json` or equivalent.
 
-Same MCP config as Claude Code. Add to `.cursor/mcp.json` or equivalent.
+### Lovable (No Install)
+1. Go to **Settings → Connectors → New MCP server**
+2. Enter URL: `https://speclock-mcp-production.up.railway.app/mcp`
+3. Paste [project instructions](SPECLOCK-INSTRUCTIONS.md) into Knowledge
 
-### Project Instructions
+---
 
-For MCP platforms, paste these rules into your platform's instruction settings (Lovable Knowledge, .cursorrules, CLAUDE.md, etc.):
+## Why SpecLock Over Alternatives?
 
-```
-## SpecLock Rules (MANDATORY — follow on every message)
+| | Claude Memory | Mem0 | `.cursorrules` | **SpecLock** |
+|---|:---:|:---:|:---:|:---:|
+| Remembers context | Yes | Yes | Manual | **Yes** |
+| **Blocks the AI from breaking things** | No | No | No | **Yes** |
+| **Semantic conflict detection** | No | No | No | **95.65% detection, 0% FP** |
+| **Tamper-proof audit trail** | No | No | No | **HMAC-SHA256 chain** |
+| **Hard enforcement (AI cannot proceed)** | No | No | No | **Yes** |
+| **SOC 2 / HIPAA compliance exports** | No | No | No | **Yes** |
+| **Encrypted storage (AES-256-GCM)** | No | No | No | **Yes** |
+| **RBAC + API key auth** | No | No | No | **4 roles** |
+| **Policy-as-Code DSL** | No | No | No | **YAML rules** |
+| Works on Bolt.new, Lovable, etc. | No | No | No | **Yes** |
 
-1. START: Call speclock_session_briefing FIRST. Show: "🔒 Memory loaded — X locks, Y decisions."
-2. BEFORE CHANGES: Call speclock_check_conflict. If HIGH conflict, STOP and warn.
-3. LOCK: When user says "never/always/don't touch" → call speclock_add_lock immediately.
-4. AFTER FEATURES: Call speclock_log_change with summary + files affected.
-5. UNLOCK: When user wants to change something locked → warn first, only proceed on confirm.
-6. END: Call speclock_session_summary with what was accomplished.
-```
+**Other tools remember. SpecLock enforces.**
 
-See [SPECLOCK-INSTRUCTIONS.md](SPECLOCK-INSTRUCTIONS.md) for platform-specific versions.
+---
 
-## What It Looks Like In Practice
+## Semantic Engine v2
 
-### Bolt.new — Session 1 (Setup)
-```
-User: "Install speclock and set up memory for my SaaS"
+Not keyword matching — **real semantic analysis**. Tested against 61 adversarial attack vectors.
 
-Bolt: ✓ Ran npx speclock setup
-      ✓ Set goal: "Build B2B SaaS API"
-      ✓ Added 6 locks (auth, security, rate limiting...)
-      ✓ Recorded 7 decisions (Supabase, Stripe, Gemini...)
-      ✓ Context file generated — project memory active
-```
+<table>
+<tr><td><b>Category</b></td><td><b>Detection</b></td><td><b>Example</b></td></tr>
+<tr><td>Direct violations</td><td>100%</td><td>"Delete the auth module" vs lock "Never modify auth"</td></tr>
+<tr><td>Euphemistic attacks</td><td>100%</td><td>"Clean up old patient data" = deletion</td></tr>
+<tr><td>Temporal evasion</td><td>100%</td><td>"Temporarily disable MFA" = disable MFA</td></tr>
+<tr><td>Dilution attacks</td><td>100%</td><td>Violation buried in multi-part request</td></tr>
+<tr><td>Compound sentences</td><td>100%</td><td>"Update UI and also drop users table"</td></tr>
+<tr><td>Synonym substitution</td><td>95%+</td><td>"Sunset the API" = remove the API</td></tr>
+<tr><td>Safe actions (true negatives)</td><td>0% FP</td><td>"Add dark mode" correctly passes all locks</td></tr>
+</table>
 
-### Bolt.new — Session 2 (Full Memory)
-```
-User: "Create a plan for the API endpoints"
+**Under the hood:** 55 synonym groups · 70+ euphemism mappings · domain concept maps · intent classifier · compound sentence splitter · temporal evasion detector — all in pure JavaScript. Zero API calls. Zero latency.
 
-Bolt: ✓ Read project context (6 locks, 7 decisions)
-      ✓ Created 10-phase plan respecting ALL constraints
-      ✓ All plans use Supabase (locked), Bearer auth (locked)
-      ✓ Logged planning phase back to SpecLock
-```
+---
 
-### Any Platform — Constraint Enforcement
-```
-You:    "Add social login to the login page"
-AI:     ⚠️ CONFLICT (HIGH — 100%): Violates lock "Never modify auth files"
-        Reasons:
-        - Direct keyword match: auth
-        - Synonym match: security, authentication
-        - Lock prohibits this action (negation detected)
+## Hard Enforcement
 
-        Should I proceed or find another approach?
-```
-
-## Killer Feature: Semantic Conflict Detection v2
-
-Not keyword matching — **real semantic analysis**. Tested against 61 adversarial attack vectors across 7 categories. **100% detection rate, 0% false positives.**
-
-SpecLock v2's semantic engine includes:
-- **55 synonym groups** — "truncate" matches "delete", "flash" matches "overwrite", "sunset" matches "remove"
-- **70+ euphemism map** — "clean up old data" detected as deletion, "streamline workflow" detected as removal
-- **Domain concept maps** — "safety scanning" links to "CSAM detection", "PHI" links to "patient records"
-- **Intent classifier** — "Enable audit logging" correctly allowed when lock says "Never disable audit logging"
-- **Compound sentence splitter** — "Update UI and also delete patient records" — catches the hidden violation
-- **Temporal evasion detection** — "temporarily disable" treated with same severity as "disable"
-- **Optional LLM integration** — Enterprise-grade 99%+ accuracy with OpenAI/Anthropic API
+Two modes:
 
 ```
-Lock:    "Never delete patient records"
-Action:  "Clean up old patient data from cold storage"
-
-Result:  [HIGH] Conflict detected (confidence: 100%)
-  - euphemism detected: "clean up" (euphemism for delete)
-  - concept match: patient data → patient records
-  - lock prohibits this action (negation detected)
-
-Lock:    "Never disable audit logging"
-Action:  "Enable comprehensive audit logging"
-
-Result:  NO CONFLICT (confidence: 7%)
-  - intent alignment: "enable" is opposite of prohibited "disable" (compliant)
+Advisory (default):  AI gets a warning, decides what to do
+Hard mode:           AI is BLOCKED — MCP returns isError, AI cannot proceed
 ```
-
-## Three Integration Modes
-
-| Mode | Platforms | How It Works |
-|------|-----------|--------------|
-| **MCP Remote** | Lovable, bolt.diy, Base44 | Connect via URL — no install needed |
-| **MCP Local** | Claude Code, Cursor, Windsurf, Cline | `npx speclock serve` — 31 tools via MCP |
-| **npm File-Based** | Bolt.new, Aider, Rocket.new | `npx speclock setup` — AI reads SPECLOCK.md + uses CLI |
-
-## 31 MCP Tools
-
-### Memory Management
-| Tool | Purpose |
-|------|---------|
-| `speclock_init` | Initialize SpecLock in project |
-| `speclock_get_context` | **THE KEY TOOL** — full context pack |
-| `speclock_set_goal` | Set/update project goal |
-| `speclock_add_lock` | Add non-negotiable constraint |
-| `speclock_remove_lock` | Deactivate a lock by ID |
-| `speclock_add_decision` | Record an architectural decision |
-| `speclock_add_note` | Add a pinned note |
-| `speclock_set_deploy_facts` | Record deploy configuration |
-
-### Change Tracking
-| Tool | Purpose |
-|------|---------|
-| `speclock_log_change` | Log a significant change |
-| `speclock_get_changes` | Get recent tracked changes |
-| `speclock_get_events` | Get event log (filterable) |
-
-### Enforcement & Protection
-| Tool | Purpose |
-|------|---------|
-| `speclock_check_conflict` | Check action against locks (semantic matching) |
-| `speclock_session_briefing` | Start session + full briefing |
-| `speclock_session_summary` | End session + record summary |
-
-### Git Integration
-| Tool | Purpose |
-|------|---------|
-| `speclock_checkpoint` | Create named git tag for rollback |
-| `speclock_repo_status` | Branch, commit, changed files, diff |
-
-### Intelligence
-| Tool | Purpose |
-|------|---------|
-| `speclock_suggest_locks` | AI-powered lock suggestions from patterns |
-| `speclock_detect_drift` | Scan changes for constraint violations |
-| `speclock_health` | Health score + multi-agent timeline |
-
-### Templates, Reports & Enforcement
-| Tool | Purpose |
-|------|---------|
-| `speclock_apply_template` | Apply pre-built constraint templates (nextjs, react, express, etc.) |
-| `speclock_report` | Violation report — blocked change stats |
-| `speclock_audit` | Audit staged files against active locks |
-
-### Enterprise (v2.1)
-| Tool | Purpose |
-|------|---------|
-| `speclock_verify_audit` | Verify HMAC audit chain integrity — tamper detection |
-| `speclock_export_compliance` | Generate SOC 2 / HIPAA / CSV compliance reports |
-
-### Hard Enforcement (v2.5)
-| Tool | Purpose |
-|------|---------|
-| `speclock_set_enforcement` | Set enforcement mode: advisory (warn) or hard (block) |
-| `speclock_override_lock` | Override a lock with justification — logged to audit trail |
-| `speclock_semantic_audit` | Semantic pre-commit: analyze code changes vs locks |
-| `speclock_override_history` | View lock override history for audit review |
-
-### Enterprise Platform (v3.5)
-| Tool | Purpose |
-|------|---------|
-| `speclock_policy_evaluate` | Evaluate policy-as-code rules against proposed actions |
-| `speclock_policy_manage` | CRUD for policy rules — list, add, remove, init, export |
-| `speclock_telemetry` | View opt-in telemetry summary and usage analytics |
-
-## Auto-Guard: Locks That Actually Work
-
-When you add a lock, SpecLock **automatically finds and guards related files**:
-
-```
-speclock lock "Never modify auth files"
-→ Auto-guarded 2 related file(s):
-  🔒 src/components/Auth.tsx
-  🔒 src/contexts/AuthContext.tsx
-
-speclock lock "Database must always be Supabase"
-→ Auto-guarded 1 related file(s):
-  🔒 src/lib/supabase.ts
-```
-
-The guard injects a warning **directly inside the file**. When the AI opens the file to edit it, it sees:
-```
-// ============================================================
-// SPECLOCK-GUARD — DO NOT MODIFY THIS FILE
-// LOCKED: Never modify auth files
-// THIS FILE IS LOCKED. DO NOT EDIT, CHANGE, OR REWRITE ANY PART OF IT.
-// The user must say "unlock" before this file can be changed.
-// A question is NOT permission. Asking about features is NOT permission.
-// ONLY "unlock" or "remove the lock" is permission to edit this file.
-// ============================================================
-```
-
-Active locks are also embedded in `package.json` — so the AI sees your constraints every time it reads the project config.
-
-## CLI Commands
 
 ```bash
-# Setup
-speclock setup --goal "Build my app" --template nextjs  # One-shot setup + template
-
-# Memory
-speclock goal <text>                   # Set project goal
-speclock lock <text> [--tags a,b]      # Add constraint + auto-guard files
-speclock lock remove <id>              # Remove a lock
-speclock decide <text>                 # Record a decision
-speclock note <text>                   # Add a note
-
-# Enforcement
-speclock check <text>                  # Check for lock conflicts
-speclock guard <file> --lock "text"    # Manually guard a specific file
-speclock unguard <file>                # Remove guard from file
-
-# Templates
-speclock template list                 # List available templates
-speclock template apply <name>         # Apply: nextjs, react, express, supabase, stripe, security-hardened
-
-# Violation Report
-speclock report                        # Show violation stats + most tested locks
-
-# Git Pre-commit Hook
-speclock hook install                  # Install pre-commit hook
-speclock hook remove                   # Remove pre-commit hook
-speclock audit                         # Audit staged files against locks
-
-# Tracking
-speclock log-change <text> --files x   # Log a change
-speclock context                       # Regenerate context file
-
-# Enterprise (v2.1)
-speclock audit-verify                  # Verify HMAC audit chain integrity
-speclock export --format <soc2|hipaa|csv>  # Compliance export
-speclock license                       # Show license tier and usage
-
-# Hard Enforcement (v2.5)
-speclock enforce <advisory|hard>       # Set enforcement mode
-speclock override <lockId> <reason>    # Override a lock with justification
-speclock overrides [--lock <id>]       # Show override history
-speclock audit-semantic                # Semantic pre-commit audit
-
-# Enterprise Platform (v3.5)
-speclock policy list                   # List policy rules
-speclock policy init                   # Initialize policy-as-code
-speclock policy add <name> --files <pattern> --actions <types> --enforce <level>
-speclock policy evaluate --files <f> --type <t>  # Evaluate against rules
-speclock policy export                 # Export policy as portable YAML
-speclock telemetry status              # View telemetry summary
-speclock sso status                    # Show SSO configuration
-speclock sso configure                 # Configure OAuth/OIDC SSO
-
-# Other
-speclock status                        # Show brain summary
-speclock serve [--project <path>]      # Start MCP server
-speclock watch                         # Start file watcher
+speclock enforce hard   # Enable hard mode — violations above threshold are blocked
 ```
 
-## Enterprise Features (v2.1)
+- **Configurable threshold** — default 70%. Only HIGH confidence conflicts block.
+- **Override with reason** — `speclock override <lockId> "JIRA-1234: approved by CTO"` (logged to audit trail)
+- **Auto-escalation** — lock overridden 3+ times → auto-flags for review
+
+---
+
+## Enterprise Security
+
+### API Key Auth + RBAC
+
+```bash
+speclock auth create-key --role developer --name "CI Bot"
+# → sk_speclock_a1b2c3... (shown once, stored as SHA-256 hash)
+```
+
+| Role | Read | Write Locks | Override | Admin |
+|------|:---:|:---:|:---:|:---:|
+| `viewer` | Yes | — | — | — |
+| `developer` | Yes | — | With reason | — |
+| `architect` | Yes | Yes | Yes | — |
+| `admin` | Yes | Yes | Yes | Yes |
+
+### AES-256-GCM Encryption
+
+```bash
+export SPECLOCK_ENCRYPTION_KEY="your-secret"
+speclock encrypt   # Encrypts brain.json + events.log at rest
+```
+
+PBKDF2 key derivation (100K iterations). Authenticated encryption. **HIPAA 2026 compliant.**
 
 ### HMAC Audit Chain
-Every event in `events.log` gets an HMAC-SHA256 hash chained to the previous event. Modify any event and the chain breaks — instant tamper detection.
+
+Every event gets an HMAC-SHA256 hash chained to the previous event. Modify anything — the chain breaks.
 
 ```bash
-$ npx speclock audit-verify
+$ speclock audit-verify
 
-Audit Chain Verification
-==================================================
-Status: VALID
-Total events: 47
-Hashed events: 47
-Legacy events (pre-v2.1): 0
-Audit chain verified. No tampering detected.
+✓ Audit chain VALID — 247 events, 0 broken links, no tampering detected.
 ```
 
 ### Compliance Exports
-Generate audit-ready reports for regulated industries:
 
 ```bash
-npx speclock export --format soc2    # SOC 2 Type II JSON report
-npx speclock export --format hipaa   # HIPAA PHI protection report
-npx speclock export --format csv     # All events as CSV spreadsheet
+speclock export --format soc2    # SOC 2 Type II report (JSON)
+speclock export --format hipaa   # HIPAA PHI protection report
+speclock export --format csv     # All events for auditor spreadsheets
 ```
 
-SOC 2 reports include: constraint change history, access logs, decision audit trail, audit chain integrity verification. HIPAA reports filter for PHI-related constraints and check encryption/access control status.
+---
 
-### License Tiers
-| Tier | Price | Locks | Features |
-|------|-------|-------|----------|
-| **Free** | $0 | 10 | Conflict detection, MCP, CLI, context |
-| **Pro** | $19/mo | Unlimited | + LLM detection, HMAC audit, compliance exports |
-| **Enterprise** | $99/mo | Unlimited | + RBAC, encrypted storage, SSO |
+## Policy-as-Code
 
-### HTTP Server Hardening
-- Rate limiting: 100 req/min per IP (configurable via `SPECLOCK_RATE_LIMIT`)
-- CORS: configurable origins via `SPECLOCK_CORS_ORIGINS`
-- Health endpoint: `GET /health` with uptime and audit chain status
-
-### GitHub Actions
-```yaml
-# In your workflow:
-- uses: sgroy10/speclock-check@v2
-  with:
-    fail-on-conflict: true
-```
-Audits changed files against locks, posts PR comments, fails workflow on violations.
-
-## Hard Enforcement (v2.5)
-
-### Advisory vs Hard Mode
-```
-Advisory mode (default): AI gets a warning, decides what to do
-Hard mode:               AI is BLOCKED — cannot proceed (MCP returns isError: true)
-```
-
-- **Block threshold**: Configurable (default 70%). Only HIGH confidence conflicts block.
-- **Override mechanism**: `speclock_override_lock` with a reason (logged to audit trail)
-- **Escalation**: Lock overridden 3+ times → auto-creates a review note
-- **Semantic pre-commit**: Parses actual git diff content, runs semantic analysis against locks
-
-## Security & Access Control (v3.0)
-
-### API Key Authentication
-SHA-256 hashed keys stored server-side. HTTP transport uses `Authorization: Bearer <key>` headers. MCP transport authenticates via the `SPECLOCK_API_KEY` environment variable. Keys are never stored in plaintext.
-
-### RBAC (4 Roles)
-| Role | Permissions |
-|------|-------------|
-| **viewer** | Read-only access to context, locks, decisions, and events |
-| **developer** | Read + override locks with a documented reason |
-| **architect** | Read + write (add/remove locks, decisions) + override |
-| **admin** | Full access — manage keys, roles, enforcement settings, and all operations |
-
-### AES-256-GCM Encryption
-Transparent encrypt-on-write / decrypt-on-read for `brain.json` and `events.log`. Encryption key is derived via PBKDF2 from the `SPECLOCK_ENCRYPTION_KEY` environment variable. Authenticated encryption (GCM) ensures both confidentiality and integrity. **HIPAA 2026 compliant.**
-
-### Test Coverage
-**330+ tests passing** across 6 test suites. Full coverage for authentication, authorization, encryption, semantic detection, audit chain integrity, policy-as-code, telemetry, and SSO.
-
-## Enterprise Platform (v3.5)
-
-### Policy-as-Code DSL
-Declarative YAML-based policy rules for enterprise constraint enforcement:
+Declarative YAML rules for organization-wide enforcement:
 
 ```yaml
 # .speclock/policy.yml
@@ -456,89 +218,243 @@ rules:
       actions: [delete, modify, export]
     enforce: block
     severity: critical
-    notify: ["security@company.com", "slack:#compliance"]
+
+  - name: "No direct DB mutations"
+    match:
+      files: ["**/models/**"]
+      actions: [delete]
+    enforce: warn
+    severity: high
 ```
 
-- **File pattern matching**: Glob patterns (`**/patient/**`, `src/api/*.js`)
-- **Action-type filtering**: Block specific operations (delete, modify, create, export)
-- **Enforcement levels**: `block` (hard stop), `warn` (advisory), `log` (record only)
-- **Severity levels**: critical, high, medium, low
-- **Notification hooks**: Email, Slack, webhook channels
-- **Import/export**: Share policies between organizations
+Import and export policies between projects. Share constraint templates across your organization.
 
-### OAuth/OIDC SSO
-Enterprise single sign-on with corporate identity providers:
+---
 
-- **Providers**: Okta, Azure AD, Auth0, any OIDC-compliant IdP
-- **PKCE flow**: Authorization Code with Proof Key (S256)
-- **Role mapping**: Map OIDC groups/roles to SpecLock roles (viewer/developer/architect/admin)
-- **Session management**: 8-hour TTL, token refresh, session listing/revocation
-- **MCP June 2025 spec**: OAuth compliance
+## 31 MCP Tools
 
-### Admin Dashboard
-Real-time web UI served from the HTTP server:
+<details>
+<summary><b>Memory</b> — goal, locks, decisions, notes, deploy facts</summary>
 
-- **Access**: `http://localhost:PORT/dashboard`
-- **Views**: Lock overview, violation timeline, session history, health score
-- **Metrics**: Enforcement mode, auth status, encryption status, audit chain integrity
-- **Zero dependencies**: Vanilla HTML/JS — no framework overhead
-- **Auto-refresh**: Updates every 30 seconds
+| Tool | What it does |
+|------|-------------|
+| `speclock_init` | Initialize SpecLock in project |
+| `speclock_get_context` | Full context pack (the key tool) |
+| `speclock_set_goal` | Set project goal |
+| `speclock_add_lock` | Add constraint + auto-guard files |
+| `speclock_remove_lock` | Soft-delete a lock |
+| `speclock_add_decision` | Record architectural decision |
+| `speclock_add_note` | Add pinned note |
+| `speclock_set_deploy_facts` | Record deploy config |
 
-### Telemetry & Analytics
-Opt-in usage insights for product improvement:
+</details>
 
-- **Disabled by default** — enable with `SPECLOCK_TELEMETRY=true`
-- **Tracks**: Tool usage counts, conflict detection rates, response times, feature adoption
-- **Never tracks**: Lock content, project names, any PII
-- **Local storage**: `.speclock/telemetry.json` with optional remote flush
-- **30-day rolling window**: Daily stats with trend analysis
+<details>
+<summary><b>Enforcement</b> — conflict detection, hard blocking, overrides</summary>
+
+| Tool | What it does |
+|------|-------------|
+| `speclock_check_conflict` | Semantic conflict check against all locks |
+| `speclock_set_enforcement` | Switch advisory/hard mode |
+| `speclock_override_lock` | Override with reason (audit logged) |
+| `speclock_override_history` | View override audit trail |
+| `speclock_semantic_audit` | Analyze git diff against locks |
+| `speclock_detect_drift` | Scan for constraint violations |
+| `speclock_audit` | Audit staged files pre-commit |
+
+</details>
+
+<details>
+<summary><b>Tracking & Sessions</b> — changes, events, session continuity</summary>
+
+| Tool | What it does |
+|------|-------------|
+| `speclock_session_briefing` | Start session + full briefing |
+| `speclock_session_summary` | End session + record summary |
+| `speclock_log_change` | Log a change with files |
+| `speclock_get_changes` | Recent tracked changes |
+| `speclock_get_events` | Full event log (filterable) |
+| `speclock_checkpoint` | Git tag for rollback |
+| `speclock_repo_status` | Branch, commit, diff summary |
+
+</details>
+
+<details>
+<summary><b>Intelligence</b> — suggestions, health, templates, reports</summary>
+
+| Tool | What it does |
+|------|-------------|
+| `speclock_suggest_locks` | AI-powered lock suggestions |
+| `speclock_health` | Health score + multi-agent timeline |
+| `speclock_apply_template` | Apply constraint template |
+| `speclock_report` | Violation stats + most tested locks |
+
+</details>
+
+<details>
+<summary><b>Enterprise</b> — audit, compliance, policy, telemetry</summary>
+
+| Tool | What it does |
+|------|-------------|
+| `speclock_verify_audit` | Verify HMAC chain integrity |
+| `speclock_export_compliance` | SOC 2 / HIPAA / CSV reports |
+| `speclock_policy_evaluate` | Evaluate policy rules |
+| `speclock_policy_manage` | CRUD for policy rules |
+| `speclock_telemetry` | Opt-in usage analytics |
+
+</details>
+
+---
+
+## CLI
+
+```bash
+# Setup
+speclock setup --goal "Build my app" --template nextjs
+
+# Constraints
+speclock lock "Never modify auth files" --tags auth,security
+speclock lock remove <id>
+speclock check "Add social login"              # Test before doing
+
+# Enforcement
+speclock enforce hard                          # Block violations
+speclock override <lockId> "JIRA-1234"         # Override with reason
+
+# Audit & Compliance
+speclock audit-verify                          # Verify HMAC chain
+speclock export --format soc2                  # Compliance report
+speclock audit-semantic                        # Semantic pre-commit
+
+# Git
+speclock hook install                          # Pre-commit hook
+speclock audit                                 # Audit staged files
+
+# Templates
+speclock template apply nextjs                 # Pre-built constraints
+speclock template apply security-hardened
+
+# Auth
+speclock auth create-key --role developer
+speclock auth rotate-key <keyId>
+
+# Policy
+speclock policy init                           # Create policy.yml
+speclock policy evaluate --files "src/auth/*"  # Test against rules
+```
+
+Full command reference: `npx speclock help`
+
+---
+
+## Auto-Guard
+
+When you lock something, SpecLock finds related files and injects a warning the AI sees when it opens them:
+
+```
+speclock lock "Never modify auth files"
+→ Auto-guarded 2 files:
+  🔒 src/components/Auth.tsx
+  🔒 src/contexts/AuthContext.tsx
+```
+
+The AI opens the file and sees:
+```javascript
+// ============================================================
+// SPECLOCK-GUARD — DO NOT MODIFY THIS FILE
+// LOCKED: Never modify auth files
+// ONLY "unlock" or "remove the lock" is permission to edit.
+// ============================================================
+```
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│       AI Tool (Bolt.new, Lovable, Claude Code)       │
-└──────────────┬──────────────────┬────────────────────┘
-               │                  │
-     MCP Protocol          File-Based (npm)
-    (31 tool calls)      (reads SPECLOCK.md +
-                        .speclock/context/latest.md,
-                         runs CLI commands)
-               │                  │
-┌──────────────▼──────────────────▼────────────────────┐
-│              SpecLock Core Engine                      │
-│  Memory | Tracking | Enforcement | Git | Intelligence │
-│  Audit  | Compliance | License | Auth | RBAC          │
-│  AES-256-GCM Encryption (brain.json, events.log)      │
-└──────────────────────┬───────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│     AI Tool (Claude Code, Cursor, Bolt.new...)    │
+└────────────┬──────────────────┬──────────────────┘
+             │                  │
+   MCP Protocol (31 tools)    npm File-Based
+             │              (SPECLOCK.md + CLI)
+             │                  │
+┌────────────▼──────────────────▼──────────────────┐
+│            SpecLock Core Engine                    │
+│                                                    │
+│  Semantic Engine ─── 55 synonym groups             │
+│  HMAC Audit ──────── SHA-256 hash chain            │
+│  Enforcer ────────── advisory / hard block         │
+│  Auth + RBAC ─────── 4 roles, API keys             │
+│  AES-256-GCM ─────── encrypted at rest             │
+│  Policy DSL ──────── YAML rules                    │
+│  Compliance ──────── SOC 2, HIPAA, CSV             │
+│  SSO ─────────────── Okta, Azure AD, Auth0         │
+└──────────────────────┬───────────────────────────┘
                        │
-                .speclock/
-                ├── brain.json         (structured memory)
-                ├── events.log         (HMAC-signed audit trail)
-                ├── .audit-key         (HMAC secret — gitignored)
-                ├── patches/           (git diffs per event)
-                └── context/
-                    └── latest.md      (human-readable context)
+                 .speclock/
+                 ├── brain.json        (project memory)
+                 ├── events.log        (HMAC audit trail)
+                 ├── policy.yml        (policy rules)
+                 ├── auth.json         (API keys — gitignored)
+                 └── context/
+                     └── latest.md     (AI-readable context)
 ```
 
-## Contributing
-
-Contributions welcome! Please open an issue or PR on [GitHub](https://github.com/sgroy10/speclock).
-
-## License
-
-MIT License - see [LICENSE](LICENSE) file.
-
-## Author
-
-**Developed by Sandeep Roy**
-
-- GitHub: [github.com/sgroy10](https://github.com/sgroy10)
-- Repository: [github.com/sgroy10/speclock](https://github.com/sgroy10/speclock)
-- npm: [npmjs.com/package/speclock](https://www.npmjs.com/package/speclock)
+**3 npm dependencies.** Zero runtime dependencies for the semantic engine. Pure JavaScript.
 
 ---
 
-*SpecLock v3.0.0 — Semantic conflict detection + enterprise audit & compliance. 100% detection, 0% false positives. HMAC audit chain, SOC 2/HIPAA exports. Hard enforcement mode. API Key Auth + RBAC. AES-256-GCM encrypted storage. 300 tests passing. Because remembering isn't enough — AI needs to respect boundaries.*
+## Test Results
+
+| Suite | Tests | Pass Rate |
+|-------|------:|----------:|
+| Adversarial Conflict Detection | 61 | 96.7% |
+| HMAC Audit Chain | 35 | 100% |
+| Hard Enforcement Engine | 40 | 100% |
+| Auth, RBAC & AES-256 Encryption | 114 | 100% |
+| SOC 2 / HIPAA / CSV Compliance | 50 | 100% |
+| Policy, SSO, Dashboard, Telemetry | 91 | 100% |
+| John's Journey (Vibecoder on Bolt.new) | 86 | 100% |
+| Sam's Journey (Enterprise Hospital ERP) | 124 | 100% |
+| **Total** | **601** | **99.7%** |
+
+The 2 uncaught adversarial cases are jargon attacks with zero subject overlap — an edge case requiring domain-specific knowledge.
+
+---
+
+## Real-World Tested
+
+### John — Indie developer on Bolt.new
+8 sessions building an ecommerce app. 5 locks (auth, Firebase, Supabase, shipping, Stripe). Every direct violation caught. Every euphemistic attack caught ("clean up auth", "modernize database", "streamline serverless"). Zero false positives on safe actions (product page, cart, dark mode). **86/86 tests passed.**
+
+### Sam — Senior engineer building a HIPAA hospital ERP
+10 sessions with 8 HIPAA locks. Every violation caught — expose PHI, remove encryption, disable audit, downgrade MFA, bypass FHIR. Euphemistic HIPAA attacks caught ("simplify data flow", "modernize auth"). Full auth + RBAC + encryption + compliance export workflow verified. **124/124 tests passed.**
+
+---
+
+## Pricing
+
+| Tier | Price | What you get |
+|------|-------|-------------|
+| **Free** | $0 | 10 locks, conflict detection, MCP, CLI |
+| **Pro** | $19/mo | Unlimited locks, HMAC audit, compliance exports |
+| **Enterprise** | $99/mo | + RBAC, encryption, SSO, policy-as-code |
+
+---
+
+## Contributing
+
+Issues and PRs welcome on [GitHub](https://github.com/sgroy10/speclock).
+
+## License
+
+[MIT](LICENSE)
+
+## Author
+
+Built by **[Sandeep Roy](https://github.com/sgroy10)**
+
+---
+
+<p align="center"><i>v3.5.2 — 601 tests, 31 MCP tools, 0 false positives. Because remembering isn't enough.</i></p>
