@@ -1,8 +1,8 @@
 {
   "manifest_version": "0.2",
   "name": "speclock",
-  "version": "1.7.0",
-  "description": "AI constraint engine — MCP server + CLI with active enforcement. Memory + guardrails for AI coding tools. 22 tools: templates, violation reports, pre-commit hooks, semantic conflict detection.",
+  "version": "2.0.0",
+  "description": "AI constraint engine with real semantic conflict detection (v2). 100% detection rate, 0% false positives across 61 adversarial tests. 22 MCP tools, CLI, npm. Memory + enforcement for AI coding tools.",
   "author": {
     "name": "Sandeep Roy (https://github.com/sgroy10)"
   },

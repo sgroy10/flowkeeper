@@ -79,7 +79,7 @@ function refreshContext(root) {
 
 function printHelp() {
   console.log(`
-SpecLock v1.7.0 — AI Constraint Engine
+SpecLock v2.0.0 — AI Constraint Engine
 Developed by Sandeep Roy (github.com/sgroy10)
 
 Usage: speclock <command> [options]
