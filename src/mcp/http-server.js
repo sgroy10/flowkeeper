@@ -19,6 +19,7 @@ import {
   updateDeployFacts,
   logChange,
   checkConflict,
+  checkConflictAsync,
   getSessionBriefing,
   endSession,
   suggestLocks,
@@ -45,7 +46,7 @@ import {
 } from "../core/git.js";
 
 const PROJECT_ROOT = process.env.SPECLOCK_PROJECT_ROOT || process.cwd();
-const VERSION = "1.7.0";
+const VERSION = "2.0.0";
 const AUTHOR = "Sandeep Roy";
 
 function createSpecLockServer() {
@@ -176,7 +177,7 @@ function createSpecLockServer() {
   // Tool 12: speclock_check_conflict
   server.tool("speclock_check_conflict", "Check if a proposed action conflicts with any active SpecLock.", { proposedAction: z.string().min(1).describe("Description of the action") }, async ({ proposedAction }) => {
     ensureInit(PROJECT_ROOT);
-    const result = checkConflict(PROJECT_ROOT, proposedAction);
+    const result = await checkConflictAsync(PROJECT_ROOT, proposedAction);
     return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
   });
 

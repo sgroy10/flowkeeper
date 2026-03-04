@@ -12,6 +12,7 @@ import {
   updateDeployFacts,
   logChange,
   checkConflict,
+  checkConflictAsync,
   getSessionBriefing,
   endSession,
   suggestLocks,
@@ -56,7 +57,7 @@ const PROJECT_ROOT =
   args.project || process.env.SPECLOCK_PROJECT_ROOT || process.cwd();
 
 // --- MCP Server ---
-const VERSION = "1.7.0";
+const VERSION = "2.0.0";
 const AUTHOR = "Sandeep Roy";
 
 const server = new McpServer(
@@ -427,7 +428,7 @@ server.tool(
       .describe("Description of the action you plan to take"),
   },
   async ({ proposedAction }) => {
-    const result = checkConflict(PROJECT_ROOT, proposedAction);
+    const result = await checkConflictAsync(PROJECT_ROOT, proposedAction);
     return {
       content: [{ type: "text", text: result.analysis }],
     };

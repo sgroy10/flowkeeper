@@ -17,6 +17,7 @@ import {
 } from "./storage.js";
 import { hasGit, getHead, getDefaultBranch, captureDiff, getStagedFiles } from "./git.js";
 import { getTemplateNames, getTemplate } from "./templates.js";
+import { analyzeConflict } from "./semantics.js";
 
 // --- Internal helpers ---
 
@@ -251,7 +252,8 @@ export function handleFileEvent(root, brain, type, filePath) {
   recordEvent(root, brain, event);
 }
 
-// --- Synonym groups for semantic matching ---
+// --- Legacy synonym groups (deprecated — kept for backward compatibility) ---
+// @deprecated Use analyzeConflict() from semantics.js instead
 const SYNONYM_GROUPS = [
   ["remove", "delete", "drop", "eliminate", "destroy", "kill", "purge", "wipe"],
   ["add", "create", "introduce", "insert", "new"],
@@ -270,12 +272,13 @@ const SYNONYM_GROUPS = [
   ["enable", "activate", "turn-on", "switch-on"],
 ];
 
-// Negation words that invert meaning
+// @deprecated
 const NEGATION_WORDS = ["no", "not", "never", "without", "dont", "don't", "cannot", "can't", "shouldn't", "mustn't", "avoid", "prevent", "prohibit", "forbid", "disallow"];
 
-// Destructive action words
+// @deprecated
 const DESTRUCTIVE_WORDS = ["remove", "delete", "drop", "destroy", "kill", "purge", "wipe", "break", "disable", "revert", "rollback", "undo"];
 
+// @deprecated — use analyzeConflict() from semantics.js
 function expandWithSynonyms(words) {
   const expanded = new Set(words);
   for (const word of words) {
@@ -288,17 +291,20 @@ function expandWithSynonyms(words) {
   return [...expanded];
 }
 
+// @deprecated
 function hasNegation(text) {
   const lower = text.toLowerCase();
   return NEGATION_WORDS.some((neg) => lower.includes(neg));
 }
 
+// @deprecated
 function isDestructiveAction(text) {
   const lower = text.toLowerCase();
   return DESTRUCTIVE_WORDS.some((w) => lower.includes(w));
 }
 
 // Check if a proposed action conflicts with any active SpecLock
+// v2: Uses the semantic analysis engine from semantics.js
 export function checkConflict(root, proposedAction) {
   const brain = ensureInit(root);
   const activeLocks = brain.specLock.items.filter((l) => l.active !== false);
@@ -310,61 +316,18 @@ export function checkConflict(root, proposedAction) {
     };
   }
 
-  const actionLower = proposedAction.toLowerCase();
-  const actionWords = actionLower.split(/\s+/).filter((w) => w.length > 2);
-  const actionExpanded = expandWithSynonyms(actionWords);
-  const actionIsDestructive = isDestructiveAction(actionLower);
-
   const conflicting = [];
   for (const lock of activeLocks) {
-    const lockLower = lock.text.toLowerCase();
-    const lockWords = lockLower.split(/\s+/).filter((w) => w.length > 2);
-    const lockExpanded = expandWithSynonyms(lockWords);
+    const result = analyzeConflict(proposedAction, lock.text);
 
-    // Direct keyword overlap
-    const directOverlap = actionWords.filter((w) => lockWords.includes(w));
-
-    // Synonym-expanded overlap
-    const synonymOverlap = actionExpanded.filter((w) => lockExpanded.includes(w));
-    const uniqueSynonymMatches = synonymOverlap.filter((w) => !directOverlap.includes(w));
-
-    // Negation analysis: lock says "No X" and action does X
-    const lockHasNegation = hasNegation(lockLower);
-    const actionHasNegation = hasNegation(actionLower);
-    const negationConflict = lockHasNegation && !actionHasNegation && synonymOverlap.length > 0;
-
-    // Calculate confidence score
-    let confidence = 0;
-    let reasons = [];
-
-    if (directOverlap.length > 0) {
-      confidence += directOverlap.length * 30;
-      reasons.push(`direct keyword match: ${directOverlap.join(", ")}`);
-    }
-    if (uniqueSynonymMatches.length > 0) {
-      confidence += uniqueSynonymMatches.length * 15;
-      reasons.push(`synonym match: ${uniqueSynonymMatches.join(", ")}`);
-    }
-    if (negationConflict) {
-      confidence += 40;
-      reasons.push("lock prohibits this action (negation detected)");
-    }
-    if (actionIsDestructive && synonymOverlap.length > 0) {
-      confidence += 20;
-      reasons.push("destructive action against locked constraint");
-    }
-
-    confidence = Math.min(confidence, 100);
-
-    if (confidence >= 15) {
-      const level = confidence >= 70 ? "HIGH" : confidence >= 40 ? "MEDIUM" : "LOW";
+    if (result.isConflict) {
       conflicting.push({
         id: lock.id,
         text: lock.text,
-        matchedKeywords: [...new Set([...directOverlap, ...uniqueSynonymMatches])],
-        confidence,
-        level,
-        reasons,
+        matchedKeywords: [],
+        confidence: result.confidence,
+        level: result.level,
+        reasons: result.reasons,
       });
     }
   }
@@ -373,7 +336,7 @@ export function checkConflict(root, proposedAction) {
     return {
       hasConflict: false,
       conflictingLocks: [],
-      analysis: `Checked against ${activeLocks.length} active lock(s). No conflicts detected (keyword + synonym + negation analysis). Proceed with caution.`,
+      analysis: `Checked against ${activeLocks.length} active lock(s). No conflicts detected (semantic analysis v2). Proceed with caution.`,
     };
   }
 
@@ -404,6 +367,21 @@ export function checkConflict(root, proposedAction) {
   writeBrain(root, brain);
 
   return result;
+}
+
+// Async version — uses LLM if available, falls back to heuristic
+export async function checkConflictAsync(root, proposedAction) {
+  // Try LLM first (if llm-checker is available)
+  try {
+    const { llmCheckConflict } = await import("./llm-checker.js");
+    const llmResult = await llmCheckConflict(root, proposedAction);
+    if (llmResult) return llmResult;
+  } catch (_) {
+    // LLM checker not available or failed — fall through to heuristic
+  }
+
+  // Fallback to heuristic
+  return checkConflict(root, proposedAction);
 }
 
 // --- Auto-lock suggestions ---
@@ -478,7 +456,7 @@ export function suggestLocks(root) {
   return { suggestions, totalLocks: brain.specLock.items.filter((l) => l.active).length };
 }
 
-// --- Drift detection ---
+// --- Drift detection (v2: uses semantic engine) ---
 export function detectDrift(root) {
   const brain = ensureInit(root);
   const activeLocks = brain.specLock.items.filter((l) => l.active !== false);
@@ -488,29 +466,20 @@ export function detectDrift(root) {
 
   const drifts = [];
 
-  // Check recent changes against locks
+  // Check recent changes against locks using the semantic engine
   for (const change of brain.state.recentChanges) {
-    const changeLower = change.summary.toLowerCase();
-    const changeWords = changeLower.split(/\s+/).filter((w) => w.length > 2);
-    const changeExpanded = expandWithSynonyms(changeWords);
-
     for (const lock of activeLocks) {
-      const lockLower = lock.text.toLowerCase();
-      const lockWords = lockLower.split(/\s+/).filter((w) => w.length > 2);
-      const lockExpanded = expandWithSynonyms(lockWords);
+      const result = analyzeConflict(change.summary, lock.text);
 
-      const overlap = changeExpanded.filter((w) => lockExpanded.includes(w));
-      const lockHasNegation = hasNegation(lockLower);
-
-      if (overlap.length >= 2 && lockHasNegation) {
+      if (result.isConflict) {
         drifts.push({
           lockId: lock.id,
           lockText: lock.text,
           changeEventId: change.eventId,
           changeSummary: change.summary,
           changeAt: change.at,
-          matchedTerms: overlap,
-          severity: overlap.length >= 3 ? "high" : "medium",
+          matchedTerms: result.reasons,
+          severity: result.level === "HIGH" ? "high" : "medium",
         });
       }
     }
