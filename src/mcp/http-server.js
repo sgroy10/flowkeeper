@@ -91,7 +91,7 @@ import { fileURLToPath } from "url";
 import _path from "path";
 
 const PROJECT_ROOT = process.env.SPECLOCK_PROJECT_ROOT || process.cwd();
-const VERSION = "4.3.1";
+const VERSION = "4.3.2";
 const AUTHOR = "Sandeep Roy";
 const START_TIME = Date.now();
 
@@ -201,7 +201,7 @@ function createSpecLockServer() {
   server.tool("speclock_add_lock", "Add a non-negotiable constraint (SpecLock).", { text: z.string().min(1).describe("The constraint text"), tags: z.array(z.string()).default([]).describe("Category tags"), source: z.enum(["user", "agent"]).default("agent").describe("Who created this lock") }, async ({ text, tags, source }) => {
     ensureInit(PROJECT_ROOT);
     const lock = addLock(PROJECT_ROOT, text, tags, source);
-    return { content: [{ type: "text", text: `Lock added [${lock.id}]: ${text}` }] };
+    return { content: [{ type: "text", text: `Lock added [${lock.lockId}]: ${text}` }] };
   });
 
   // Tool 5: speclock_remove_lock
@@ -215,7 +215,7 @@ function createSpecLockServer() {
   server.tool("speclock_add_decision", "Record an architectural or design decision.", { text: z.string().min(1).describe("The decision text"), tags: z.array(z.string()).default([]), source: z.enum(["user", "agent"]).default("agent") }, async ({ text, tags, source }) => {
     ensureInit(PROJECT_ROOT);
     const d = addDecision(PROJECT_ROOT, text, tags, source);
-    return { content: [{ type: "text", text: `Decision recorded [${d.id}]: ${text}` }] };
+    return { content: [{ type: "text", text: `Decision recorded [${d.decId}]: ${text}` }] };
   });
 
   // Tool 7: speclock_add_note
