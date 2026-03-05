@@ -59,13 +59,18 @@ const GUARD_TAG = "SPECLOCK-GUARD";
 /**
  * Detect if the first argument is a file-system path (brain mode)
  * or natural text (direct mode for cross-platform usage).
+ * Must be strict: "spay/neuter" is NOT a path, "/app" IS a path.
  */
 function isDirectoryPath(str) {
   if (!str || typeof str !== "string") return false;
   // Absolute paths: /foo, C:\foo, \\server
-  if (str.startsWith("/") || str.startsWith("\\") || /^[A-Z]:/i.test(str)) return true;
-  // Relative path with separator or current dir
-  if (str === "." || str === ".." || str.includes("/") || str.includes("\\")) return true;
+  if (/^[A-Z]:/i.test(str)) return true;                 // C:\Users\...
+  if (str.startsWith("\\\\")) return true;                 // \\server\share
+  if (str.startsWith("/") && !str.includes(" ")) return true; // /app, /usr/local (no spaces = likely path)
+  // Relative path starting with . or ..
+  if (/^\.\.?[/\\]/.test(str)) return true;                // ./foo, ../bar
+  if (str === "." || str === "..") return true;
+  // Natural language with / in the middle (spay/neuter, TCP/IP, etc.) is NOT a path
   return false;
 }
 
