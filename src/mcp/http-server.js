@@ -91,7 +91,7 @@ import { fileURLToPath } from "url";
 import _path from "path";
 
 const PROJECT_ROOT = process.env.SPECLOCK_PROJECT_ROOT || process.cwd();
-const VERSION = "4.3.2";
+const VERSION = "4.3.3";
 const AUTHOR = "Sandeep Roy";
 const START_TIME = Date.now();
 
@@ -654,6 +654,110 @@ app.get("/mcp", async (req, res) => {
 app.delete("/mcp", async (req, res) => {
   setCorsHeaders(res);
   res.writeHead(405).end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32000, message: "Method not allowed." }, id: null }));
+});
+
+// ========================================
+// PUBLIC PROXY API (v4.3 — for npm-install users)
+// Allows npm-install users to get Gemini LLM coverage without
+// needing their own API key. Heuristic runs locally, grey-zone
+// cases are proxied here for LLM verification.
+// ========================================
+
+app.post("/api/check", async (req, res) => {
+  setCorsHeaders(res);
+
+  // Rate limiting
+  const clientIp = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
+  if (!checkRateLimit(clientIp)) {
+    return res.status(429).json({ error: "Rate limit exceeded. Try again later." });
+  }
+
+  const { action, locks } = req.body || {};
+  if (!action || typeof action !== "string") {
+    return res.status(400).json({ error: "Missing required field: action (string)" });
+  }
+  if (!locks || !Array.isArray(locks) || locks.length === 0) {
+    return res.status(400).json({ error: "Missing required field: locks (non-empty array of strings)" });
+  }
+  if (locks.length > 50) {
+    return res.status(400).json({ error: "Too many locks (max 50)" });
+  }
+
+  try {
+    // Build lock objects for the LLM checker
+    const activeLocks = locks.map((text, i) => ({
+      id: `proxy-${i}`,
+      text: String(text),
+      active: true,
+    }));
+
+    // Run heuristic first (same as local)
+    const { analyzeConflict } = await import("../core/semantics.js");
+    const heuristicConflicts = [];
+    for (const lock of activeLocks) {
+      const result = analyzeConflict(action, lock.text);
+      if (result.isConflict) {
+        heuristicConflicts.push({
+          lockText: lock.text,
+          confidence: result.confidence,
+          level: result.level,
+          reasons: result.reasons,
+          source: "heuristic",
+        });
+      }
+    }
+
+    // If all heuristic conflicts are HIGH (>70%), return immediately
+    if (heuristicConflicts.length > 0 && heuristicConflicts.every(c => c.confidence > 70)) {
+      return res.json({
+        hasConflict: true,
+        conflicts: heuristicConflicts,
+        source: "heuristic",
+      });
+    }
+
+    // Call LLM for full coverage
+    const { llmCheckConflict } = await import("../core/llm-checker.js");
+    const llmResult = await llmCheckConflict(null, action, activeLocks);
+
+    if (llmResult) {
+      // Merge: keep HIGH heuristic + all LLM conflicts
+      const highHeuristic = heuristicConflicts.filter(c => c.confidence > 70);
+      const llmConflicts = (llmResult.conflictingLocks || []).map(c => ({
+        lockText: c.text,
+        confidence: c.confidence,
+        level: c.level,
+        reasons: c.reasons || [],
+        source: "gemini",
+      }));
+      const merged = [...highHeuristic, ...llmConflicts];
+
+      // Deduplicate by lock text
+      const byText = new Map();
+      for (const c of merged) {
+        const existing = byText.get(c.lockText);
+        if (!existing || c.confidence > existing.confidence) {
+          byText.set(c.lockText, c);
+        }
+      }
+      const unique = [...byText.values()];
+
+      return res.json({
+        hasConflict: unique.length > 0,
+        conflicts: unique,
+        source: unique.some(c => c.source === "gemini") ? "hybrid" : "heuristic",
+      });
+    }
+
+    // LLM unavailable — return heuristic result
+    return res.json({
+      hasConflict: heuristicConflicts.length > 0,
+      conflicts: heuristicConflicts,
+      source: "heuristic-only",
+    });
+  } catch (err) {
+    return res.status(500).json({ error: `Check failed: ${err.message}` });
+  }
 });
 
 // Health check endpoint (enhanced for enterprise)

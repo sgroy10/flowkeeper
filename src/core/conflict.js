@@ -205,11 +205,68 @@ export function checkConflict(rootOrAction, proposedActionOrLock) {
 }
 
 /**
+ * Default proxy URL for npm-install users who don't have their own LLM API key.
+ * The Railway-hosted SpecLock server provides Gemini LLM checking via /api/check.
+ * Disable with SPECLOCK_NO_PROXY=true. Override with SPECLOCK_PROXY_URL.
+ */
+const DEFAULT_PROXY_URL = "https://speclock-mcp-production.up.railway.app/api/check";
+
+/**
+ * Call the Railway proxy for LLM-powered conflict checking.
+ * Used when no local LLM API key is available.
+ * @returns {Object|null} Proxy result or null on failure
+ */
+async function callProxy(actionText, lockTexts) {
+  if (process.env.SPECLOCK_NO_PROXY === "true") return null;
+  const proxyUrl = process.env.SPECLOCK_PROXY_URL || DEFAULT_PROXY_URL;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+    const resp = await fetch(proxyUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: actionText, locks: lockTexts }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!resp.ok) return null;
+    const data = await resp.json();
+
+    if (!data || typeof data.hasConflict !== "boolean") return null;
+
+    // Convert proxy response to internal format
+    const conflicts = (data.conflicts || []).map((c) => ({
+      id: "proxy",
+      text: c.lockText,
+      matchedKeywords: [],
+      confidence: c.confidence,
+      level: c.level || "MEDIUM",
+      reasons: c.reasons || [],
+    }));
+
+    return {
+      hasConflict: data.hasConflict,
+      conflictingLocks: conflicts,
+      analysis: data.hasConflict
+        ? `${conflicts.length} conflict(s) detected via proxy (${data.source}).`
+        : `Proxy verified as safe (${data.source}). No conflicts.`,
+    };
+  } catch (_) {
+    // Proxy unavailable — graceful degradation
+    return null;
+  }
+}
+
+/**
  * Async conflict check with LLM fallback for grey-zone cases.
  * Supports both brain mode and direct mode (same as checkConflict).
  * Strategy: Run heuristic first (fast, free, offline).
  *   - Score > 70% on ALL conflicts → trust heuristic (skip LLM)
  *   - Everything else → call LLM for universal domain coverage
+ *   - If no local LLM key → call Railway proxy for Gemini coverage
  */
 export async function checkConflictAsync(rootOrAction, proposedActionOrLock) {
   // 1. Always run the fast heuristic first (handles both brain + direct mode)
@@ -224,12 +281,9 @@ export async function checkConflictAsync(rootOrAction, proposedActionOrLock) {
     return heuristicResult;
   }
 
-  // 3. Call LLM for everything else — including score 0.
-  // Score 0 means "heuristic vocabulary doesn't cover this domain",
-  // which is EXACTLY when an LLM (which knows every domain) adds value.
+  // 3. Try local LLM first (if user has their own API key)
   try {
     const { llmCheckConflict } = await import("./llm-checker.js");
-    // In direct mode, build activeLocks from the lock text(s) passed directly
     let llmResult;
     if (isDirect) {
       const lockTexts = Array.isArray(proposedActionOrLock)
@@ -246,43 +300,75 @@ export async function checkConflictAsync(rootOrAction, proposedActionOrLock) {
     }
 
     if (llmResult) {
-      // Keep HIGH heuristic conflicts (>70%) — they're already certain
-      const highConfidence = heuristicResult.conflictingLocks.filter(
-        (c) => c.confidence > 70
-      );
-      const llmConflicts = llmResult.conflictingLocks || [];
-      const merged = [...highConfidence, ...llmConflicts];
-
-      // Deduplicate by lock text, keeping the higher-confidence entry
-      const byText = new Map();
-      for (const c of merged) {
-        const existing = byText.get(c.text);
-        if (!existing || c.confidence > existing.confidence) {
-          byText.set(c.text, c);
-        }
-      }
-      const unique = [...byText.values()];
-
-      if (unique.length === 0) {
-        return {
-          hasConflict: false,
-          conflictingLocks: [],
-          analysis: `Heuristic had partial signal, LLM verified as safe. No conflicts.`,
-        };
-      }
-
-      unique.sort((a, b) => b.confidence - a.confidence);
-      return {
-        hasConflict: true,
-        conflictingLocks: unique,
-        analysis: `${unique.length} conflict(s) confirmed (${highConfidence.length} heuristic + ${llmConflicts.length} LLM-verified).`,
-      };
+      return mergeLLMResult(heuristicResult, llmResult);
     }
   } catch (_) {
-    // LLM not available — return heuristic result as-is
+    // Local LLM not available
+  }
+
+  // 4. No local LLM → call Railway proxy for Gemini coverage
+  try {
+    let lockTexts;
+    if (isDirect) {
+      lockTexts = Array.isArray(proposedActionOrLock)
+        ? proposedActionOrLock
+        : [proposedActionOrLock];
+    } else {
+      // Brain mode: extract lock texts from brain
+      const brain = ensureInit(rootOrAction);
+      const activeLocks = (brain.specLock?.items || []).filter((l) => l.active !== false);
+      lockTexts = activeLocks.map((l) => l.text);
+    }
+
+    const actionText = isDirect ? rootOrAction : proposedActionOrLock;
+    if (lockTexts.length > 0) {
+      const proxyResult = await callProxy(actionText, lockTexts);
+      if (proxyResult) {
+        return mergeLLMResult(heuristicResult, proxyResult);
+      }
+    }
+  } catch (_) {
+    // Proxy unavailable — graceful degradation
   }
 
   return heuristicResult;
+}
+
+/**
+ * Merge heuristic result with LLM/proxy result.
+ * Keeps HIGH heuristic conflicts + all LLM conflicts, deduplicates, takes MAX.
+ */
+function mergeLLMResult(heuristicResult, llmResult) {
+  const highConfidence = heuristicResult.conflictingLocks.filter(
+    (c) => c.confidence > 70
+  );
+  const llmConflicts = llmResult.conflictingLocks || [];
+  const merged = [...highConfidence, ...llmConflicts];
+
+  // Deduplicate by lock text, keeping the higher-confidence entry
+  const byText = new Map();
+  for (const c of merged) {
+    const existing = byText.get(c.text);
+    if (!existing || c.confidence > existing.confidence) {
+      byText.set(c.text, c);
+    }
+  }
+  const unique = [...byText.values()];
+
+  if (unique.length === 0) {
+    return {
+      hasConflict: false,
+      conflictingLocks: [],
+      analysis: `Heuristic had partial signal, LLM verified as safe. No conflicts.`,
+    };
+  }
+
+  unique.sort((a, b) => b.confidence - a.confidence);
+  return {
+    hasConflict: true,
+    conflictingLocks: unique,
+    analysis: `${unique.length} conflict(s) confirmed (${highConfidence.length} heuristic + ${llmConflicts.length} LLM-verified).`,
+  };
 }
 
 export function suggestLocks(root) {
