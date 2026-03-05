@@ -56,13 +56,95 @@ const GUARD_TAG = "SPECLOCK-GUARD";
 
 // --- Core functions ---
 
-export function checkConflict(root, proposedAction) {
+/**
+ * Detect if the first argument is a file-system path (brain mode)
+ * or natural text (direct mode for cross-platform usage).
+ */
+function isDirectoryPath(str) {
+  if (!str || typeof str !== "string") return false;
+  // Absolute paths: /foo, C:\foo, \\server
+  if (str.startsWith("/") || str.startsWith("\\") || /^[A-Z]:/i.test(str)) return true;
+  // Relative path with separator or current dir
+  if (str === "." || str === ".." || str.includes("/") || str.includes("\\")) return true;
+  return false;
+}
+
+/**
+ * Direct-mode conflict check: action text + lock text(s) directly.
+ * No brain.json needed. Works on any platform.
+ * @param {string} actionText - The proposed action
+ * @param {string|string[]} locks - Lock text or array of lock texts
+ * @returns {Object} Same shape as brain-mode checkConflict
+ */
+function checkConflictDirect(actionText, locks) {
+  const lockList = Array.isArray(locks) ? locks : [locks];
+  const conflicting = [];
+  let maxNonConflictScore = 0;
+
+  for (const lockText of lockList) {
+    const result = analyzeConflict(actionText, lockText);
+    if (result.isConflict) {
+      conflicting.push({
+        id: "direct",
+        text: lockText,
+        matchedKeywords: [],
+        confidence: result.confidence,
+        level: result.level,
+        reasons: result.reasons,
+      });
+    } else if (result.confidence > maxNonConflictScore) {
+      maxNonConflictScore = result.confidence;
+    }
+  }
+
+  if (conflicting.length === 0) {
+    return {
+      hasConflict: false,
+      conflictingLocks: [],
+      _maxNonConflictScore: maxNonConflictScore,
+      analysis: `Checked against ${lockList.length} lock(s). No conflicts detected.`,
+    };
+  }
+
+  conflicting.sort((a, b) => b.confidence - a.confidence);
+  const details = conflicting
+    .map(
+      (c) =>
+        `- [${c.level}] "${c.text}" (confidence: ${c.confidence}%)\n  Reasons: ${c.reasons.join("; ")}`
+    )
+    .join("\n");
+
+  return {
+    hasConflict: true,
+    conflictingLocks: conflicting,
+    _maxNonConflictScore: maxNonConflictScore,
+    analysis: `Potential conflict with ${conflicting.length} lock(s):\n${details}\nReview before proceeding.`,
+  };
+}
+
+/**
+ * Check conflicts. Supports TWO calling patterns:
+ *   1. Brain mode:  checkConflict(rootDir, proposedAction)
+ *   2. Direct mode:  checkConflict(actionText, lockText)
+ *                    checkConflict(actionText, [lock1, lock2, ...])
+ * Automatically detects which mode based on the first argument.
+ */
+export function checkConflict(rootOrAction, proposedActionOrLock) {
+  // Direct mode: first arg is not a directory path → treat as (action, lock)
+  if (!isDirectoryPath(rootOrAction)) {
+    return checkConflictDirect(rootOrAction, proposedActionOrLock);
+  }
+
+  // Brain mode: first arg is a directory path → read locks from brain.json
+  const root = rootOrAction;
+  const proposedAction = proposedActionOrLock;
   const brain = ensureInit(root);
-  const activeLocks = brain.specLock.items.filter((l) => l.active !== false);
+  const activeLocks = (brain.specLock?.items || []).filter((l) => l.active !== false);
   if (activeLocks.length === 0) {
     return {
       hasConflict: false,
       conflictingLocks: [],
+      _maxNonConflictScore: 0,
       analysis: "No active locks. No constraints to check against.",
     };
   }
@@ -124,25 +206,17 @@ export function checkConflict(root, proposedAction) {
 
 /**
  * Async conflict check with LLM fallback for grey-zone cases.
+ * Supports both brain mode and direct mode (same as checkConflict).
  * Strategy: Run heuristic first (fast, free, offline).
  *   - Score > 70% on ALL conflicts → trust heuristic (skip LLM)
- *   - Score == 0 everywhere (no signal at all) → trust heuristic (skip LLM)
- *   - Score 1–70% on ANY lock → GREY ZONE → call LLM for universal domain coverage
- * This catches vocabulary gaps where the heuristic has partial/no signal
- * but an LLM (which knows every domain) would detect the conflict.
+ *   - Everything else → call LLM for universal domain coverage
  */
-export async function checkConflictAsync(root, proposedAction) {
-  // 1. Always run the fast heuristic first
-  const heuristicResult = checkConflict(root, proposedAction);
+export async function checkConflictAsync(rootOrAction, proposedActionOrLock) {
+  // 1. Always run the fast heuristic first (handles both brain + direct mode)
+  const heuristicResult = checkConflict(rootOrAction, proposedActionOrLock);
+  const isDirect = !isDirectoryPath(rootOrAction);
 
-  // 2. Determine the max score across ALL locks (conflict + non-conflict)
-  const maxConflictScore = heuristicResult.conflictingLocks.length > 0
-    ? Math.max(...heuristicResult.conflictingLocks.map((c) => c.confidence))
-    : 0;
-  const maxNonConflictScore = heuristicResult._maxNonConflictScore || 0;
-  const maxScore = Math.max(maxConflictScore, maxNonConflictScore);
-
-  // 3. Fast path: all conflicts are HIGH (>70%) → heuristic is certain, skip LLM
+  // 2. Fast path: all conflicts are HIGH (>70%) → heuristic is certain, skip LLM
   if (
     heuristicResult.hasConflict &&
     heuristicResult.conflictingLocks.every((c) => c.confidence > 70)
@@ -150,12 +224,27 @@ export async function checkConflictAsync(root, proposedAction) {
     return heuristicResult;
   }
 
-  // 4. Call LLM for everything else — including score 0.
+  // 3. Call LLM for everything else — including score 0.
   // Score 0 means "heuristic vocabulary doesn't cover this domain",
   // which is EXACTLY when an LLM (which knows every domain) adds value.
   try {
     const { llmCheckConflict } = await import("./llm-checker.js");
-    const llmResult = await llmCheckConflict(root, proposedAction);
+    // In direct mode, build activeLocks from the lock text(s) passed directly
+    let llmResult;
+    if (isDirect) {
+      const lockTexts = Array.isArray(proposedActionOrLock)
+        ? proposedActionOrLock
+        : [proposedActionOrLock];
+      const activeLocks = lockTexts.map((t, i) => ({
+        id: `direct-${i}`,
+        text: t,
+        active: true,
+      }));
+      llmResult = await llmCheckConflict(null, rootOrAction, activeLocks);
+    } else {
+      llmResult = await llmCheckConflict(rootOrAction, proposedActionOrLock);
+    }
+
     if (llmResult) {
       // Keep HIGH heuristic conflicts (>70%) — they're already certain
       const highConfidence = heuristicResult.conflictingLocks.filter(

@@ -1,7 +1,7 @@
 {
   "name": "speclock",
-  "version": "4.2.0",
-  "description": "AI constraint engine with Policy-as-Code DSL, OAuth/OIDC SSO, admin dashboard, telemetry, API key auth, RBAC, AES-256-GCM encryption, hard enforcement, semantic pre-commit, HMAC audit chain, SOC 2/HIPAA compliance. 100% detection, 0% false positives. 31 MCP tools + CLI. Enterprise platform.",
+  "version": "4.3.0",
+  "description": "AI constraint engine with Gemini LLM universal detection, Policy-as-Code DSL, OAuth/OIDC SSO, admin dashboard, telemetry, API key auth, RBAC, AES-256-GCM encryption, hard enforcement, semantic pre-commit, HMAC audit chain, SOC 2/HIPAA compliance. Cross-platform: MCP + direct API. 31 MCP tools + CLI. Enterprise platform.",
   "type": "module",
   "main": "src/mcp/server.js",
   "bin": {

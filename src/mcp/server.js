@@ -100,7 +100,7 @@ const PROJECT_ROOT =
   args.project || process.env.SPECLOCK_PROJECT_ROOT || process.cwd();
 
 // --- MCP Server ---
-const VERSION = "3.5.4";
+const VERSION = "4.3.0";
 const AUTHOR = "Sandeep Roy";
 
 const server = new McpServer(
@@ -521,48 +521,54 @@ server.tool(
       .describe("Which AI tool is being used"),
   },
   async ({ toolName }) => {
-    const briefing = getSessionBriefing(PROJECT_ROOT, toolName);
-    const contextMd = generateContext(PROJECT_ROOT);
+    try {
+      const briefing = getSessionBriefing(PROJECT_ROOT, toolName);
+      const contextMd = generateContext(PROJECT_ROOT);
 
-    const parts = [];
+      const parts = [];
 
-    // Session info
-    parts.push(`# SpecLock Session Briefing`);
-    parts.push(`Session started (${toolName}). ID: ${briefing.session.id}`);
-    parts.push("");
-
-    // Last session summary
-    if (briefing.lastSession) {
-      parts.push("## Last Session");
-      parts.push(`- Tool: **${briefing.lastSession.toolUsed}**`);
-      parts.push(`- Ended: ${briefing.lastSession.endedAt || "unknown"}`);
-      if (briefing.lastSession.summary)
-        parts.push(`- Summary: ${briefing.lastSession.summary}`);
-      parts.push(
-        `- Events: ${briefing.lastSession.eventsInSession || 0}`
-      );
-      parts.push(
-        `- Changes since then: ${briefing.changesSinceLastSession}`
-      );
+      // Session info
+      parts.push(`# SpecLock Session Briefing`);
+      parts.push(`Session started (${toolName}). ID: ${briefing.session?.id || "new"}`);
       parts.push("");
-    }
 
-    // Warnings
-    if (briefing.warnings.length > 0) {
-      parts.push("## ⚠ Warnings");
-      for (const w of briefing.warnings) {
-        parts.push(`- ${w}`);
+      // Last session summary
+      if (briefing.lastSession) {
+        parts.push("## Last Session");
+        parts.push(`- Tool: **${briefing.lastSession.toolUsed || "unknown"}**`);
+        parts.push(`- Ended: ${briefing.lastSession.endedAt || "unknown"}`);
+        if (briefing.lastSession.summary)
+          parts.push(`- Summary: ${briefing.lastSession.summary}`);
+        parts.push(
+          `- Events: ${briefing.lastSession.eventsInSession || 0}`
+        );
+        parts.push(
+          `- Changes since then: ${briefing.changesSinceLastSession || 0}`
+        );
+        parts.push("");
       }
-      parts.push("");
+
+      // Warnings
+      if (briefing.warnings?.length > 0) {
+        parts.push("## Warnings");
+        for (const w of briefing.warnings) {
+          parts.push(`- ${w}`);
+        }
+        parts.push("");
+      }
+
+      // Full context
+      parts.push("---");
+      parts.push(contextMd);
+
+      return {
+        content: [{ type: "text", text: parts.join("\n") }],
+      };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `# SpecLock Session Briefing\n\nError loading session: ${err.message}\n\nTry running speclock_init first.\n\n---\n*SpecLock v${VERSION}*` }],
+      };
     }
-
-    // Full context
-    parts.push("---");
-    parts.push(contextMd);
-
-    return {
-      content: [{ type: "text", text: parts.join("\n") }],
-    };
   }
 );
 
@@ -780,68 +786,78 @@ server.tool(
   "Get a health check of the SpecLock setup including completeness score, missing recommended items, and multi-agent session timeline.",
   {},
   async () => {
-    const brain = ensureInit(PROJECT_ROOT);
-    const activeLocks = brain.specLock.items.filter((l) => l.active !== false);
+    try {
+      const brain = ensureInit(PROJECT_ROOT);
+      const activeLocks = (brain.specLock?.items || []).filter((l) => l.active !== false);
 
-    // Calculate health score
-    let score = 0;
-    const checks = [];
+      // Calculate health score
+      let score = 0;
+      const checks = [];
 
-    if (brain.goal.text) { score += 20; checks.push("[PASS] Goal is set"); }
-    else checks.push("[MISS] No project goal set");
+      if (brain.goal?.text) { score += 20; checks.push("[PASS] Goal is set"); }
+      else checks.push("[MISS] No project goal set");
 
-    if (activeLocks.length > 0) { score += 25; checks.push(`[PASS] ${activeLocks.length} active lock(s)`); }
-    else checks.push("[MISS] No SpecLock constraints defined");
+      if (activeLocks.length > 0) { score += 25; checks.push(`[PASS] ${activeLocks.length} active lock(s)`); }
+      else checks.push("[MISS] No SpecLock constraints defined");
 
-    if (brain.decisions.length > 0) { score += 15; checks.push(`[PASS] ${brain.decisions.length} decision(s) recorded`); }
-    else checks.push("[MISS] No decisions recorded");
+      if ((brain.decisions || []).length > 0) { score += 15; checks.push(`[PASS] ${brain.decisions.length} decision(s) recorded`); }
+      else checks.push("[MISS] No decisions recorded");
 
-    if (brain.notes.length > 0) { score += 10; checks.push(`[PASS] ${brain.notes.length} note(s)`); }
-    else checks.push("[MISS] No notes added");
+      if ((brain.notes || []).length > 0) { score += 10; checks.push(`[PASS] ${brain.notes.length} note(s)`); }
+      else checks.push("[MISS] No notes added");
 
-    if (brain.sessions.history.length > 0) { score += 15; checks.push(`[PASS] ${brain.sessions.history.length} session(s) in history`); }
-    else checks.push("[MISS] No session history yet");
+      const sessionHistory = brain.sessions?.history || [];
+      if (sessionHistory.length > 0) { score += 15; checks.push(`[PASS] ${sessionHistory.length} session(s) in history`); }
+      else checks.push("[MISS] No session history yet");
 
-    if (brain.state.recentChanges.length > 0) { score += 10; checks.push(`[PASS] ${brain.state.recentChanges.length} change(s) tracked`); }
-    else checks.push("[MISS] No changes tracked");
+      const recentChanges = brain.state?.recentChanges || [];
+      if (recentChanges.length > 0) { score += 10; checks.push(`[PASS] ${recentChanges.length} change(s) tracked`); }
+      else checks.push("[MISS] No changes tracked");
 
-    if (brain.facts.deploy.provider !== "unknown") { score += 5; checks.push("[PASS] Deploy facts configured"); }
-    else checks.push("[MISS] Deploy facts not configured");
+      if (brain.facts?.deploy?.provider && brain.facts.deploy.provider !== "unknown") { score += 5; checks.push("[PASS] Deploy facts configured"); }
+      else checks.push("[MISS] Deploy facts not configured");
 
-    // Multi-agent timeline
-    const agentMap = {};
-    for (const session of brain.sessions.history) {
-      const tool = session.toolUsed || "unknown";
-      if (!agentMap[tool]) agentMap[tool] = { count: 0, lastUsed: "", summaries: [] };
-      agentMap[tool].count++;
-      if (!agentMap[tool].lastUsed || session.endedAt > agentMap[tool].lastUsed) {
-        agentMap[tool].lastUsed = session.endedAt || session.startedAt;
+      // Multi-agent timeline
+      const agentMap = {};
+      for (const session of sessionHistory) {
+        const tool = session.toolUsed || "unknown";
+        if (!agentMap[tool]) agentMap[tool] = { count: 0, lastUsed: "", summaries: [] };
+        agentMap[tool].count++;
+        if (!agentMap[tool].lastUsed || (session.endedAt && session.endedAt > agentMap[tool].lastUsed)) {
+          agentMap[tool].lastUsed = session.endedAt || session.startedAt || "";
+        }
+        if (session.summary && agentMap[tool].summaries.length < 3) {
+          agentMap[tool].summaries.push(session.summary.substring(0, 80));
+        }
       }
-      if (session.summary && agentMap[tool].summaries.length < 3) {
-        agentMap[tool].summaries.push(session.summary.substring(0, 80));
+
+      let agentTimeline = "";
+      if (Object.keys(agentMap).length > 0) {
+        agentTimeline = "\n\n## Multi-Agent Timeline\n" +
+          Object.entries(agentMap)
+            .map(([tool, info]) =>
+              `- **${tool}**: ${info.count} session(s), last active ${info.lastUsed ? info.lastUsed.substring(0, 16) : "unknown"}\n  Recent: ${info.summaries.length > 0 ? info.summaries.map(s => `"${s}"`).join(", ") : "(no summaries)"}`
+            )
+            .join("\n");
       }
+
+      const grade = score >= 80 ? "A" : score >= 60 ? "B" : score >= 40 ? "C" : score >= 20 ? "D" : "F";
+      const evtCount = brain.events?.count || 0;
+      const revertCount = (brain.state?.reverts || []).length;
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `## SpecLock Health Check\n\nScore: **${score}/100** (Grade: ${grade})\nEvents: ${evtCount} | Reverts: ${revertCount}\n\n### Checks\n${checks.join("\n")}${agentTimeline}\n\n---\n*SpecLock v${VERSION} — Developed by ${AUTHOR}*`,
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: `## SpecLock Health Check\n\nError: ${err.message}\n\nTry running speclock_init first to initialize the project.\n\n---\n*SpecLock v${VERSION}*` }],
+      };
     }
-
-    let agentTimeline = "";
-    if (Object.keys(agentMap).length > 0) {
-      agentTimeline = "\n\n## Multi-Agent Timeline\n" +
-        Object.entries(agentMap)
-          .map(([tool, info]) =>
-            `- **${tool}**: ${info.count} session(s), last active ${info.lastUsed ? info.lastUsed.substring(0, 16) : "unknown"}\n  Recent: ${info.summaries.length > 0 ? info.summaries.map(s => `"${s}"`).join(", ") : "(no summaries)"}`
-          )
-          .join("\n");
-    }
-
-    const grade = score >= 80 ? "A" : score >= 60 ? "B" : score >= 40 ? "C" : score >= 20 ? "D" : "F";
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: `## SpecLock Health Check\n\nScore: **${score}/100** (Grade: ${grade})\nEvents: ${brain.events.count} | Reverts: ${brain.state.reverts.length}\n\n### Checks\n${checks.join("\n")}${agentTimeline}\n\n---\n*SpecLock v${VERSION} — Developed by ${AUTHOR}*`,
-        },
-      ],
-    };
   }
 );
 

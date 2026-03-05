@@ -379,8 +379,7 @@ export const CONCEPT_MAP = {
                         "anti-fraud"],
   "posting":           ["transaction", "ledger entry", "journal entry", "record"],
   "reconciliation":    ["balance", "ledger", "account", "transaction", "audit"],
-  "checkout":          ["payment", "cart", "purchase", "transaction", "billing",
-                        "payment processing", "order"],
+  "checkout":          ["cart", "purchase", "order"],
   "revenue":           ["payment", "billing", "income", "sales", "earnings",
                         "transaction"],
   "invoice":           ["billing", "payment", "charge", "transaction", "accounts receivable"],
@@ -425,9 +424,9 @@ export const CONCEPT_MAP = {
 
   // E-commerce
   "cart":              ["checkout", "purchase", "shopping cart"],
-  "payment processing":["payment", "checkout", "billing", "transaction",
+  "payment processing":["payment", "billing", "transaction",
                         "stripe", "payment gateway"],
-  "payment gateway":   ["payment processing", "stripe", "paypal", "checkout",
+  "payment gateway":   ["payment processing", "stripe", "paypal",
                         "billing", "transaction"],
   "product":           ["item", "sku", "catalog", "merchandise", "product listing"],
   "price":             ["pricing", "cost", "amount", "rate", "charge"],
@@ -1386,17 +1385,35 @@ function _compareSubjectsInline(actionText, lockText) {
   };
 }
 
+// --- Performance cache: avoid re-computing action-side analysis across multiple locks ---
+const _actionCache = new Map();
+const _ACTION_CACHE_MAX = 50;
+
+function _getCachedAction(text) {
+  const cached = _actionCache.get(text);
+  if (cached) return cached;
+  const tokens = tokenize(text);
+  const expanded = expandSemantics(tokens.all);
+  const intent = classifyIntent(text);
+  const temporal = detectTemporalModifier(text);
+  const entry = { tokens, expanded, intent, temporal };
+  if (_actionCache.size >= _ACTION_CACHE_MAX) {
+    _actionCache.delete(_actionCache.keys().next().value);
+  }
+  _actionCache.set(text, entry);
+  return entry;
+}
+
 export function scoreConflict({ actionText, lockText }) {
-  const actionTokens = tokenize(actionText);
+  const actionCached = _getCachedAction(actionText);
+  const actionTokens = actionCached.tokens;
+  const actionExpanded = actionCached.expanded;
+  const actionIntent = actionCached.intent;
+  const hasTemporalMod = actionCached.temporal;
+
   const lockTokens = tokenize(lockText);
-
-  const actionExpanded = expandSemantics(actionTokens.all);
   const lockExpanded = expandSemantics(lockTokens.all);
-
-  const actionIntent = classifyIntent(actionText);
   const lockIntent = classifyIntent(lockText);
-
-  const hasTemporalMod = detectTemporalModifier(actionText);
   const lockIsProhibitive = isProhibitiveLock(lockText);
 
   let score = 0;

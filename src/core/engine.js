@@ -44,6 +44,9 @@ export {
   auditStagedFiles,
 } from "./conflict.js";
 
+// --- Semantic Analysis (direct API for cross-platform usage) ---
+export { analyzeConflict, scoreConflict } from "./semantics.js";
+
 // --- Sessions ---
 export {
   startSession,

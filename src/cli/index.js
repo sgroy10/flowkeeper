@@ -116,7 +116,7 @@ function refreshContext(root) {
 
 function printHelp() {
   console.log(`
-SpecLock v3.5.0 — AI Constraint Engine (Policy-as-Code + SSO + Dashboard + Telemetry + Auth + RBAC + Encryption)
+SpecLock v4.3.0 — AI Constraint Engine (Gemini LLM + Policy-as-Code + SSO + Dashboard + Telemetry + Auth + RBAC + Encryption)
 Developed by Sandeep Roy (github.com/sgroy10)
 
 Usage: speclock <command> [options]
