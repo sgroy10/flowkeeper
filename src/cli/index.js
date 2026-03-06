@@ -117,7 +117,7 @@ function refreshContext(root) {
 
 function printHelp() {
   console.log(`
-SpecLock v4.4.3 — AI Constraint Engine (Gemini LLM + Policy-as-Code + SSO + Dashboard + Telemetry + Auth + RBAC + Encryption)
+SpecLock v4.5.0 — AI Constraint Engine (Gemini LLM + Policy-as-Code + SSO + Dashboard + Telemetry + Auth + RBAC + Encryption)
 Developed by Sandeep Roy (github.com/sgroy10)
 
 Usage: speclock <command> [options]
@@ -373,7 +373,7 @@ Tip: When starting a new chat, tell the AI:
       console.error("Usage: speclock lock <text> [--tags a,b] [--source user]");
       process.exit(1);
     }
-    const { lockId } = addLock(root, text, parseTags(flags.tags), flags.source || "user");
+    const { lockId, rewritten, rewriteReason } = addLock(root, text, parseTags(flags.tags), flags.source || "user");
 
     // Auto-guard related files (Solution 1)
     const guardResult = autoGuardRelatedFiles(root, text);
@@ -392,6 +392,9 @@ Tip: When starting a new chat, tell the AI:
 
     refreshContext(root);
     console.log(`Locked (${lockId}): "${text}"`);
+    if (rewritten) {
+      console.log(`  Note: Engine optimized for detection. Your original text is preserved.`);
+    }
     return;
   }
 

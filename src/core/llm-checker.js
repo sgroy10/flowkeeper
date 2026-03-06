@@ -190,6 +190,7 @@ async function callGemini(apiKey, userPrompt) {
           maxOutputTokens: 1000,
         },
       }),
+      signal: AbortSignal.timeout(3000), // 3s timeout for Gemini calls
     }
   );
 

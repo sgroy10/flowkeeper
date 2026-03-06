@@ -161,7 +161,8 @@ export function checkConflict(rootOrAction, proposedActionOrLock) {
     if (result.isConflict) {
       conflicting.push({
         id: lock.id,
-        text: lock.text,
+        text: lock.originalText || lock.text,
+        engineText: lock.originalText ? lock.text : undefined,
         matchedKeywords: [],
         confidence: result.confidence,
         level: result.level,
@@ -227,7 +228,7 @@ async function callProxy(actionText, lockTexts) {
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    const timeout = setTimeout(() => controller.abort(), 2000); // 2s timeout
 
     const resp = await fetch(proxyUrl, {
       method: "POST",

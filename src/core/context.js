@@ -29,7 +29,8 @@ export function generateContextPack(root) {
     goal: brain.goal.text || "",
     locks: activeLocks.slice(0, 15).map((l) => ({
       id: l.id,
-      text: l.text,
+      text: l.originalText || l.text,
+      engineText: l.originalText ? l.text : undefined,
       createdAt: l.createdAt,
       source: l.source,
     })),
@@ -89,6 +90,9 @@ export function generateContext(root) {
     );
     for (const lock of pack.locks) {
       lines.push(`- **[LOCK]** ${lock.text} _(${lock.source}, ${lock.createdAt.substring(0, 10)})_`);
+      if (lock.engineText) {
+        lines.push(`  - _Engine uses: "${lock.engineText}"_`);
+      }
     }
   } else {
     lines.push("- *(No locks defined — consider adding constraints)*");

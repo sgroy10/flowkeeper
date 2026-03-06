@@ -251,17 +251,26 @@ export function rewriteLock(lockText, verb, subject) {
     // "Never delete X" → "X must be preserved — delete and remove operations are prohibited"
     // CRITICAL: include the original verb so euphemism matching can find it
     // ("phase out" → "remove" needs "remove" in the lock text)
-    return `${cleanSubject} must be preserved — ${verb} and remove operations are prohibited.`;
+    const destNote = verb === "remove"
+      ? "remove and delete operations are prohibited"
+      : `${verb} and remove operations are prohibited`;
+    return `${cleanSubject} must be preserved — ${destNote}.`;
   }
 
   if (isModification) {
     // "Never modify X" → "X is frozen — modify and change operations are prohibited"
-    return `${cleanSubject} is frozen — ${verb} and change operations are prohibited.`;
+    const modNote = verb === "change"
+      ? "change operations are prohibited"
+      : `${verb} and change operations are prohibited`;
+    return `${cleanSubject} is frozen — ${modNote}.`;
   }
 
   if (isMovement) {
     // "Never migrate X" → "X must remain unchanged — migrate and replace operations are prohibited"
-    return `${cleanSubject} must remain unchanged — ${verb} and replace operations are prohibited.`;
+    const moveNote = verb === "replace"
+      ? "replace operations are prohibited"
+      : `${verb} and replace operations are prohibited`;
+    return `${cleanSubject} must remain unchanged — ${moveNote}.`;
   }
 
   if (isToggle) {

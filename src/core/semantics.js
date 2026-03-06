@@ -31,7 +31,8 @@ export const SYNONYM_GROUPS = [
    "rewrite", "revise", "amend", "adjust", "tweak"],
   ["replace", "swap", "substitute", "switch", "exchange",
    "override", "overwrite"],
-  ["move", "relocate", "migrate", "transfer", "shift", "rearrange", "reorganize"],
+  ["move", "relocate", "migrate", "transfer", "shift", "rearrange", "reorganize",
+   "transition"],
   ["rename", "relabel", "rebrand", "alias"],
   ["merge", "combine", "consolidate", "unify", "join", "blend"],
   ["split", "separate", "partition", "divide", "fork", "decompose"],
@@ -46,6 +47,9 @@ export const SYNONYM_GROUPS = [
   // --- Data stores ---
   ["database", "db", "datastore", "data store", "schema", "table",
    "collection", "index", "migration", "sql", "nosql", "storage"],
+  ["postgresql", "postgres", "mysql", "mongodb", "mongo", "firebase",
+   "firestore", "supabase", "dynamodb", "redis", "sqlite", "mariadb",
+   "cockroachdb", "cassandra", "couchdb", "neo4j"],
   ["record", "row", "document", "entry", "item", "entity", "tuple"],
   ["column", "field", "attribute", "property", "key"],
   ["backup", "snapshot", "dump", "export"],
@@ -108,6 +112,9 @@ export const SYNONYM_GROUPS = [
    "remuneration", "stipend"],
   ["payment gateway", "payment provider", "payment processor",
    "payment service", "payment platform"],
+  ["razorpay", "stripe", "paypal", "phonepe", "paytm", "ccavenue",
+   "cashfree", "braintree", "adyen", "square", "google pay", "gpay",
+   "juspay", "billdesk", "instamojo"],
 
   // --- IoT / firmware ---
   ["firmware", "firmware update", "ota", "over the air",
@@ -127,7 +134,10 @@ export const SYNONYM_GROUPS = [
    "suspended", "blocked user"],
   ["user data", "user information", "user records", "pii",
    "personally identifiable information", "personal data",
-   "gdpr", "data protection"],
+   "gdpr", "data protection", "ssn", "social security number",
+   "social security", "email address", "email addresses",
+   "phone number", "phone numbers", "date of birth", "dob",
+   "passport number", "driver license", "national id"],
 
   // --- DevOps / Infrastructure ---
   ["container", "docker", "kubernetes", "k8s", "pod",
@@ -243,6 +253,10 @@ export const EUPHEMISM_MAP = {
   "work around":    ["bypass", "circumvent"],
   "shortcut":       ["bypass", "skip"],
 
+  // Migration/transition euphemisms
+  "transition":     ["migrate", "switch", "change", "move", "replace"],
+  "transition to":  ["migrate to", "switch to", "change to", "move to"],
+
   // Financial / accounting euphemisms
   "reconcile":      ["modify", "adjust", "change", "alter"],
   "reverse":        ["undo", "revert", "modify", "change"],
@@ -313,12 +327,16 @@ export const EUPHEMISM_MAP = {
   "rotate":         ["change", "replace", "renew", "modify"],
   "renew":          ["change", "replace", "rotate", "modify"],
 
-  // Security euphemisms
+  // Security / data exposure euphemisms
   "make visible":   ["expose", "reveal", "public"],
   "make viewable":  ["expose", "reveal", "public"],
   "make accessible":["expose", "reveal", "public"],
   "make public":    ["expose", "reveal"],
   "transmit":       ["send", "transfer", "expose"],
+  "export":         ["extract", "expose", "dump", "download"],
+  "exfiltrate":     ["extract", "steal", "expose", "leak"],
+  "scrape":         ["extract", "collect", "harvest"],
+  "harvest":        ["collect", "extract", "scrape"],
 
   // Encryption euphemisms
   "unencrypted":    ["without encryption", "disable encryption", "no encryption", "plaintext"],
@@ -397,27 +415,51 @@ export const CONCEPT_MAP = {
   "wages":             ["salary", "payroll", "compensation", "financial records"],
   "compensation":      ["salary", "payroll", "wages", "financial records"],
 
-  // Payment providers (brand names → payment gateway concept)
+  // Payment providers (brand names → payment gateway concept + cross-references)
   "razorpay":          ["payment gateway", "payment processing", "payment",
-                        "transaction", "billing"],
+                        "transaction", "billing", "stripe", "paypal",
+                        "phonepe", "paytm", "ccavenue", "cashfree"],
   "phonepe":           ["payment gateway", "payment processing", "payment",
-                        "upi", "transaction"],
+                        "upi", "transaction", "razorpay", "paytm",
+                        "stripe", "google pay"],
   "ccavenue":          ["payment gateway", "payment processing", "payment",
-                        "transaction", "billing"],
+                        "transaction", "billing", "razorpay", "stripe",
+                        "paypal", "cashfree"],
   "paytm":             ["payment gateway", "payment processing", "payment",
-                        "upi", "transaction"],
+                        "upi", "transaction", "razorpay", "phonepe",
+                        "stripe", "google pay"],
   "paypal":            ["payment gateway", "payment processing", "payment",
-                        "transaction", "billing"],
+                        "transaction", "billing", "stripe", "razorpay",
+                        "braintree", "adyen"],
   "stripe":            ["payment gateway", "payment processing", "payment",
-                        "transaction", "billing"],
+                        "transaction", "billing", "razorpay", "paypal",
+                        "braintree", "adyen", "square"],
   "square":            ["payment gateway", "payment processing", "payment",
-                        "transaction", "billing"],
+                        "transaction", "billing", "stripe", "paypal"],
   "adyen":             ["payment gateway", "payment processing", "payment",
-                        "transaction", "billing"],
+                        "transaction", "billing", "stripe", "paypal",
+                        "braintree"],
   "braintree":         ["payment gateway", "payment processing", "payment",
-                        "transaction", "billing"],
+                        "transaction", "billing", "stripe", "paypal",
+                        "adyen"],
+  "cashfree":          ["payment gateway", "payment processing", "payment",
+                        "transaction", "billing", "razorpay", "stripe",
+                        "ccavenue", "paytm"],
+  "google pay":        ["payment gateway", "payment processing", "payment",
+                        "upi", "transaction", "phonepe", "paytm",
+                        "razorpay", "gpay"],
+  "gpay":              ["payment gateway", "payment processing", "payment",
+                        "upi", "transaction", "google pay", "phonepe",
+                        "paytm", "razorpay"],
+  "juspay":            ["payment gateway", "payment processing", "payment",
+                        "transaction", "razorpay", "stripe", "cashfree"],
+  "billdesk":          ["payment gateway", "payment processing", "payment",
+                        "transaction", "billing", "razorpay", "ccavenue"],
+  "instamojo":         ["payment gateway", "payment processing", "payment",
+                        "transaction", "billing", "razorpay", "cashfree"],
   "upi":               ["payment gateway", "payment processing", "phonepe",
-                        "paytm", "transaction", "payment"],
+                        "paytm", "google pay", "razorpay",
+                        "transaction", "payment"],
 
   // Logistics / Supply Chain
   "shipment":          ["cargo", "freight", "consignment", "delivery", "package",
@@ -475,6 +517,30 @@ export const CONCEPT_MAP = {
   "product":           ["item", "sku", "catalog", "merchandise", "product listing"],
   "price":             ["pricing", "cost", "amount", "rate", "charge"],
 
+  // Database technologies (brand names → database concept)
+  "postgresql":        ["database", "db", "sql", "postgres", "mysql",
+                        "mongodb", "firebase", "supabase"],
+  "postgres":          ["database", "db", "sql", "postgresql", "mysql",
+                        "mongodb", "firebase", "supabase"],
+  "mysql":             ["database", "db", "sql", "postgresql", "mongodb",
+                        "firebase", "supabase", "mariadb"],
+  "mongodb":           ["database", "db", "nosql", "mongo", "postgresql",
+                        "firebase", "supabase", "dynamodb"],
+  "mongo":             ["database", "db", "nosql", "mongodb", "postgresql",
+                        "firebase", "supabase"],
+  "firebase":          ["database", "db", "nosql", "firestore", "supabase",
+                        "postgresql", "mongodb", "backend"],
+  "firestore":         ["database", "db", "nosql", "firebase", "mongodb",
+                        "supabase", "dynamodb"],
+  "supabase":          ["database", "db", "postgresql", "firebase",
+                        "mongodb", "backend", "auth"],
+  "dynamodb":          ["database", "db", "nosql", "mongodb", "firebase",
+                        "cassandra"],
+  "redis":             ["database", "db", "cache", "nosql", "datastore"],
+  "sqlite":            ["database", "db", "sql", "embedded database"],
+  "mariadb":           ["database", "db", "sql", "mysql", "postgresql"],
+  "cassandra":         ["database", "db", "nosql", "dynamodb", "mongodb"],
+
   // Audit/logging
   "audit logging":     ["audit log", "audit trail", "logging", "monitoring"],
   "audit log":         ["audit logging", "audit trail", "logging"],
@@ -499,17 +565,27 @@ export const CONCEPT_MAP = {
                         "network isolation", "segmentation"],
   "network isolation": ["network segments", "segmentation", "firewall", "air gap"],
 
-  // User data
+  // User data / PII
   "pii":               ["personal data", "user data", "personally identifiable information",
-                        "user information", "gdpr"],
-  "personal data":     ["pii", "user data", "user information", "gdpr", "data protection"],
+                        "user information", "gdpr", "ssn", "social security",
+                        "email address", "phone number"],
+  "personal data":     ["pii", "user data", "user information", "gdpr", "data protection",
+                        "ssn", "social security", "email address"],
   "gdpr":              ["data protection", "consent", "privacy", "personal data", "pii",
                         "data subject", "right to erasure", "user data"],
   "data protection":   ["gdpr", "privacy", "consent", "personal data", "pii",
                         "data subject", "compliance"],
   "consent":           ["gdpr", "data protection", "opt-in", "opt-out", "user consent",
                         "privacy", "data subject"],
-  "user data":         ["pii", "personal data", "user information", "user records"],
+  "user data":         ["pii", "personal data", "user information", "user records",
+                        "ssn", "email address"],
+  "ssn":               ["social security number", "social security", "pii",
+                        "personal data", "user data", "national id"],
+  "social security":   ["ssn", "social security number", "pii", "personal data"],
+  "social security number": ["ssn", "social security", "pii", "personal data"],
+  "email address":     ["pii", "user data", "personal data", "contact information"],
+  "email addresses":   ["pii", "user data", "personal data", "email address"],
+  "phone number":      ["pii", "user data", "personal data", "contact information"],
 
   // Encryption
   "cryptographic signatures": ["code signing", "digital signatures",
@@ -1088,7 +1164,7 @@ function extractProhibitedVerb(lockText) {
 const NEUTRAL_ACTION_VERBS = [
   "modify", "change", "alter", "reconfigure", "rework",
   "overhaul", "restructure", "refactor", "redesign",
-  "replace", "swap", "switch", "migrate", "substitute",
+  "replace", "swap", "switch", "migrate", "transition", "substitute",
   "touch", "mess", "configure", "optimize", "tweak",
   "extend", "shorten", "adjust", "customize", "personalize",
 ];
@@ -1429,6 +1505,19 @@ function _compareSubjectsInline(actionText, lockText) {
         if (as.includes(" ") && ls.includes(" ")) strongMatchCount++;
         continue;
       }
+      // Synonym group match — same category items (e.g., Razorpay ↔ Stripe)
+      // Always STRONG because being in the same synonym group means same domain scope.
+      let isSynonym = false;
+      for (const group of SYNONYM_GROUPS) {
+        if (group.includes(as) && group.includes(ls)) {
+          matched.push(`synonym: ${as} ↔ ${ls}`);
+          strongMatchCount++;
+          isSynonym = true;
+          break;
+        }
+      }
+      if (isSynonym) continue;
+
       // Concept-expanded match — only STRONG if BOTH sides are multi-word phrases
       // Single-word concept matches (account~ledger, device~iot) are too ambiguous
       // to be considered strong scope overlap.
@@ -1559,7 +1648,21 @@ export function scoreConflict({ actionText, lockText }) {
     }
   }
 
-  // 4b. Destructive method verbs — "by replacing", "through overwriting", "via deleting"
+  // 4b. Split-phrase euphemisms — "make X public", "make X visible", etc.
+  // These have intervening words between the verb and the key modifier.
+  const SPLIT_PHRASE_PATTERNS = [
+    [/\bmake\s+\w+\s+public\b/i, "expose", "make ... public"],
+    [/\bmake\s+\w+\s+visible\b/i, "expose", "make ... visible"],
+    [/\bmake\s+\w+\s+accessible\b/i, "expose", "make ... accessible"],
+    [/\bmake\s+\w+\s+(?:data\s+)?public\b/i, "expose", "make ... public"],
+  ];
+  for (const [pattern, meaning, label] of SPLIT_PHRASE_PATTERNS) {
+    if (pattern.test(actionText) && lockExpanded.expanded.includes(meaning)) {
+      euphemismMatches.push(`"${label}" (euphemism for ${meaning})`);
+    }
+  }
+
+  // 4c. Destructive method verbs — "by replacing", "through overwriting", "via deleting"
   // When an action uses a positive primary verb but employs a destructive method,
   // the method verb is the real operation. "Optimize X by replacing Y" = replacement.
   const DESTRUCTIVE_METHODS = new Set([
@@ -1699,9 +1802,45 @@ export function scoreConflict({ actionText, lockText }) {
 
   // Apply the subject relevance gate based on match quality
   if (!hasSubjectMatch && (synonymMatches.length > 0 || euphemismMatches.length > 0)) {
-    // NO subject match at all — verb-only match → heavy reduction
-    score = Math.floor(score * 0.15);
-    reasons.push("subject gate: no subject overlap — verb-only match, likely false positive");
+    // Exception: if the action's euphemism DIRECTLY matches the lock's prohibited
+    // verb AND there's at least some shared content word, skip the subject gate.
+    // "Make the data public" euphemism = "expose", lock = "Never expose user data"
+    // → euphemism proves the conflict + "data" provides content overlap.
+    // But "Tax statement export" vs "Never expose portfolio positions" has no
+    // content overlap — gate should still fire to prevent false positive.
+    // Note: we check raw word overlap (ignoring stopwords filter) because common
+    // words like "data" are stopwords but still provide content signal.
+    const _prohibVerb = extractProhibitedVerb(lockText);
+    const _GATE_SKIP_STOPWORDS = new Set([
+      "a", "an", "the", "this", "that", "it", "its", "our", "their",
+      "your", "my", "his", "her", "we", "they", "them", "i",
+      "to", "of", "in", "on", "at", "by", "up", "as", "or", "and",
+      "nor", "but", "so", "if", "no", "not", "is", "be", "do", "did",
+      "with", "from", "for", "into", "over", "under", "between", "through",
+      "about", "before", "after", "during", "while",
+      "are", "was", "were", "been", "being", "have", "has", "had",
+      "will", "would", "could", "should", "may", "might", "shall",
+      "can", "need", "must", "does", "done",
+      "all", "any", "every", "some", "most", "other", "each", "both",
+      "few", "more", "less", "many", "much",
+      "also", "just", "very", "too", "really", "quite", "only", "then",
+      "now", "here", "there", "when", "where", "how", "what", "which",
+      "who", "whom", "why",
+      // Common verbs/adjectives (but NOT nouns like "data", "system")
+      "way", "thing", "things", "part", "set", "use",
+      "using", "used", "make", "made", "new", "get", "got",
+    ]);
+    const rawWordOverlap = actionTokens.words.some(w =>
+      lockTokens.words.includes(w) && !_GATE_SKIP_STOPWORDS.has(w));
+    const euphemismMatchesProhibitedVerb = _prohibVerb &&
+      rawWordOverlap &&
+      euphemismMatches.some(m => m.includes(`euphemism for ${_prohibVerb}`));
+
+    if (!euphemismMatchesProhibitedVerb) {
+      // NO subject match at all — verb-only match → heavy reduction
+      score = Math.floor(score * 0.15);
+      reasons.push("subject gate: no subject overlap — verb-only match, likely false positive");
+    }
   } else if (hasVocabSubjectMatch && !hasScopeMatch && subjectComparison.lockSubjects.length > 0 && subjectComparison.actionSubjects.length > 0) {
     // Vocabulary overlap exists but subjects point to DIFFERENT scopes
     score = Math.floor(score * 0.35);
@@ -1906,11 +2045,11 @@ export function scoreConflict({ actionText, lockText }) {
       "font", "fonts", "color", "colors", "colour", "theme", "themes",
       "styling", "style", "styles", "css", "icon", "icons", "layout",
       "margin", "padding", "border", "background", "typography", "spacing",
-      "alignment", "animation", "transition", "hover", "tooltip",
-      "placeholder", "logo", "image", "banner", "hero", "avatar",
+      "alignment", "animation", "hover", "tooltip",
+      "placeholder", "logo", "banner", "hero", "avatar",
       "sidebar", "navigation", "menu", "breadcrumb", "footer",
     ]);
-    if (!intentAligned && !hasStrongScopeMatch && !hasStrongVocabMatch) {
+    if (!intentAligned && !hasStrongVocabMatch) {
       const actionLower = actionText.toLowerCase();
       const actionWords = actionLower.split(/\s+/).map(w => w.replace(/[^a-z]/g, ""));
       const hasUISubject = actionWords.some(w => UI_COSMETIC_WORDS.has(w));
@@ -1983,7 +2122,60 @@ export function scoreConflict({ actionText, lockText }) {
 // MAIN ENTRY POINT
 // ===================================================================
 
+// Question framing prefixes that should be stripped before analysis.
+// "Should we add Razorpay?" → "add Razorpay"
+// "What if we used Firebase?" → "used Firebase"
+const QUESTION_PREFIXES = [
+  /^would\s+it\s+make\s+sense\s+to\s+/i,
+  /^would\s+it\s+be\s+(?:better|good|wise|smart|possible)\s+(?:to|if)\s+(?:we\s+)?/i,
+  /^what\s+if\s+we\s+(?:could\s+)?/i,
+  /^what\s+about\s+/i,
+  /^how\s+about\s+(?:we\s+)?/i,
+  /^should\s+we\s+(?:consider\s+)?/i,
+  /^could\s+we\s+(?:possibly\s+)?/i,
+  /^can\s+we\s+/i,
+  /^i\s+was\s+wondering\s+if\s+(?:we\s+)?(?:could\s+)?/i,
+  /^maybe\s+we\s+(?:should\s+)?(?:consider\s+)?/i,
+  /^perhaps\s+we\s+(?:should\s+)?(?:consider\s+)?/i,
+  /^wouldn't\s+it\s+be\s+(?:better|good)\s+(?:to|if)\s+(?:we\s+)?/i,
+  /^is\s+(?:it\s+)?(?:a\s+)?(?:good\s+idea\s+)?(?:to\s+)?/i,
+  /^let\s+me\s+/i,
+  /^we\s+should\s+(?:probably\s+)?(?:consider\s+)?(?:look\s+at\s+)?/i,
+  /^explore\s+(?:using\s+)?/i,
+];
+
+// Special transformations where simple prefix stripping loses the subject.
+// "Would Firebase be better for real-time sync?" → "switch to Firebase for real-time sync"
+const QUESTION_TRANSFORMS = [
+  [/^would\s+(.+?)\s+be\s+(?:a\s+)?better\s+(?:option\s+)?(?:for|than)\s+(.+)/i, "switch to $1 for $2"],
+  [/^is\s+(.+?)\s+(?:a\s+)?better\s+(?:option|choice|alternative)\s+(?:for|than)\s+(.+)/i, "switch to $1 for $2"],
+  [/^wouldn't\s+(.+?)\s+be\s+(?:a\s+)?better\s+(?:option|choice)?\s*(?:for|than)?\s*(.+)?/i, "switch to $1 $2"],
+];
+
+function stripQuestionFraming(text) {
+  let stripped = text;
+
+  // Try special transformations first (they preserve the subject)
+  for (const [pattern, replacement] of QUESTION_TRANSFORMS) {
+    if (pattern.test(stripped)) {
+      stripped = stripped.replace(pattern, replacement).trim();
+      stripped = stripped.replace(/\?\s*$/, "").trim();
+      return stripped || text;
+    }
+  }
+
+  // Then try simple prefix stripping
+  for (const pattern of QUESTION_PREFIXES) {
+    stripped = stripped.replace(pattern, "");
+  }
+  // Also remove trailing question marks
+  stripped = stripped.replace(/\?\s*$/, "").trim();
+  return stripped || text; // fallback to original if everything was stripped
+}
+
 export function analyzeConflict(actionText, lockText) {
+  // Strip question framing so "Should we add Razorpay?" → "add Razorpay"
+  actionText = stripQuestionFraming(actionText);
   const clauses = splitClauses(actionText);
 
   const clauseResults = clauses.map(clause => ({
