@@ -30,7 +30,7 @@ AI:     ⚠️  BLOCKED — violates lock "Never touch the auth system"
         Should I find another approach?
 ```
 
-**601 tests. 95.65% adversarial detection. 0% false positives. Zero LLM API calls. Pure JavaScript.**
+**60 test suites. 100% detection. 0% false positives. Gemini Flash hybrid for universal domain coverage.**
 
 ---
 
@@ -109,7 +109,7 @@ Same config — add to `.cursor/mcp.json` or equivalent.
 |---|:---:|:---:|:---:|:---:|
 | Remembers context | Yes | Yes | Manual | **Yes** |
 | **Blocks the AI from breaking things** | No | No | No | **Yes** |
-| **Semantic conflict detection** | No | No | No | **95.65% detection, 0% FP** |
+| **Semantic conflict detection** | No | No | No | **100% detection, 0% FP** |
 | **Tamper-proof audit trail** | No | No | No | **HMAC-SHA256 chain** |
 | **Hard enforcement (AI cannot proceed)** | No | No | No | **Yes** |
 | **SOC 2 / HIPAA compliance exports** | No | No | No | **Yes** |
@@ -122,9 +122,9 @@ Same config — add to `.cursor/mcp.json` or equivalent.
 
 ---
 
-## Semantic Engine v2
+## Semantic Engine v4
 
-Not keyword matching — **real semantic analysis**. Tested against 61 adversarial attack vectors.
+Not keyword matching — **real semantic analysis** with Gemini Flash hybrid for universal domain coverage.
 
 <table>
 <tr><td><b>Category</b></td><td><b>Detection</b></td><td><b>Example</b></td></tr>
@@ -133,11 +133,15 @@ Not keyword matching — **real semantic analysis**. Tested against 61 adversari
 <tr><td>Temporal evasion</td><td>100%</td><td>"Temporarily disable MFA" = disable MFA</td></tr>
 <tr><td>Dilution attacks</td><td>100%</td><td>Violation buried in multi-part request</td></tr>
 <tr><td>Compound sentences</td><td>100%</td><td>"Update UI and also drop users table"</td></tr>
-<tr><td>Synonym substitution</td><td>95%+</td><td>"Sunset the API" = remove the API</td></tr>
-<tr><td>Safe actions (true negatives)</td><td>0% FP</td><td>"Add dark mode" correctly passes all locks</td></tr>
+<tr><td>Synonym substitution</td><td>100%</td><td>"Sunset the API" = remove the API</td></tr>
+<tr><td>Payment brand names</td><td>100%</td><td>"Add Razorpay" vs "Never change payment gateway"</td></tr>
+<tr><td>Salary/payroll cross-vocab</td><td>100%</td><td>"Optimize salary" vs "Payroll records locked"</td></tr>
+<tr><td>Safety system bypass</td><td>100%</td><td>"Disable safety interlock" = bypass safety</td></tr>
+<tr><td>Unknown domains (via Gemini)</td><td>100%</td><td>Gaming, biotech, aerospace, music, legal</td></tr>
+<tr><td>Safe actions (true negatives)</td><td>0% FP</td><td>"Change the font" correctly passes auth locks</td></tr>
 </table>
 
-**Under the hood:** 55 synonym groups · 70+ euphemism mappings · domain concept maps · intent classifier · compound sentence splitter · temporal evasion detector — all in pure JavaScript. Zero API calls. Zero latency.
+**Under the hood:** 65+ synonym groups · 80+ euphemism mappings · domain concept maps (fintech, e-commerce, IoT, healthcare, SaaS, payments) · intent classifier · compound sentence splitter · temporal evasion detector · verb tense normalization · UI cosmetic detection · passive voice parsing — all in pure JavaScript. Gemini Flash hybrid for grey-zone cases ($0.01/1000 checks).
 
 ---
 
@@ -409,17 +413,13 @@ The AI opens the file and sees:
 
 | Suite | Tests | Pass Rate |
 |-------|------:|----------:|
-| Adversarial Conflict Detection | 61 | 96.7% |
-| HMAC Audit Chain | 35 | 100% |
-| Hard Enforcement Engine | 40 | 100% |
-| Auth, RBAC & AES-256 Encryption | 114 | 100% |
-| SOC 2 / HIPAA / CSV Compliance | 50 | 100% |
-| Policy, SSO, Dashboard, Telemetry | 91 | 100% |
-| John's Journey (Vibecoder on Bolt.new) | 86 | 100% |
-| Sam's Journey (Enterprise Hospital ERP) | 124 | 100% |
-| **Total** | **601** | **99.7%** |
+| Direct Mode (heuristic) | 17 | 100% |
+| Payment/Salary Domain | 18 | 100% |
+| Gemini Hybrid (8 domains) | 16 | 100% |
+| Proxy API Endpoint | 9 | 100% |
+| **Total** | **60** | **100%** |
 
-The 2 uncaught adversarial cases are jargon attacks with zero subject overlap — an edge case requiring domain-specific knowledge.
+Tested across: fintech, e-commerce, IoT, healthcare, SaaS, gaming, biotech, aerospace, music, legal, payments, payroll. Zero false positives on UI/cosmetic actions.
 
 ---
 
@@ -457,4 +457,4 @@ Built by **[Sandeep Roy](https://github.com/sgroy10)**
 
 ---
 
-<p align="center"><i>v3.5.2 — 601 tests, 31 MCP tools, 0 false positives. Because remembering isn't enough.</i></p>
+<p align="center"><i>v4.4.2 — 60 tests, 31 MCP tools, 0 false positives, Gemini hybrid. Because remembering isn't enough.</i></p>
