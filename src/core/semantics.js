@@ -1650,6 +1650,7 @@ export function scoreConflict({ actionText, lockText }) {
   let score = 0;
   const reasons = [];
   let hasSecurityViolationPattern = false;  // Set when credential-exposure detected
+  let actionPerformsProhibitedOp = false;   // Set when action verb is synonym of lock's prohibited verb
 
   // 1. Direct word overlap (minus stopwords)
   const directOverlap = actionTokens.words.filter(w =>
@@ -1904,6 +1905,47 @@ export function scoreConflict({ actionText, lockText }) {
 
   let intentAligned = false;  // true = action is doing the OPPOSITE of what lock prohibits
 
+  // Pre-compute: does the action verb match the lock's prohibited verb (or its synonyms)?
+  // This flag is used by multiple checks below to prevent false negatives.
+  if (lockIsProhibitive && prohibitedVerb) {
+    const actionWordsLower = actionText.toLowerCase().split(/\s+/)
+      .map(w => w.replace(/[^a-z]/g, ""));
+    for (const w of actionWordsLower) {
+      if (!w) continue;
+      // Direct match (including conjugations: show/shows/showing/showed)
+      if (w === prohibitedVerb || w.startsWith(prohibitedVerb)) {
+        actionPerformsProhibitedOp = true;
+        break;
+      }
+      // Synonym match: check if word is in the same synonym group as prohibited verb
+      for (const group of SYNONYM_GROUPS) {
+        if (group.includes(prohibitedVerb)) {
+          if (group.some(syn => w === syn || w.startsWith(syn) && w.length <= syn.length + 3)) {
+            actionPerformsProhibitedOp = true;
+          }
+          break;
+        }
+      }
+      if (actionPerformsProhibitedOp) break;
+    }
+
+    // Special case: "add/put/store/embed key/secret/credential in/to frontend/component/state"
+    // is SEMANTICALLY EQUIVALENT to "expose key in frontend" — NOT an opposite action.
+    if (!actionPerformsProhibitedOp && (prohibitedVerb === "expose" || prohibitedVerb === "leak" || prohibitedVerb === "reveal")) {
+      const actionNorm = actionText
+        .replace(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g, m => m.replace(/_/g, " "))
+        .toLowerCase();
+      const hasCredentialWord = /\b(key|keys|secret|secrets|credential|credentials|token|api.?key|password|cert)\b/i.test(actionNorm);
+      const hasFrontendLocation = /\b(frontend|front.?end|client|component|state|localstorage|session.?storage|browser|ui|react|vue|angular|svelte|html|template)\b/i.test(actionNorm);
+      const hasPlacementVerb = /\b(add|put|store|embed|include|place|insert|set|hardcode|inline)\b/i.test(actionNorm);
+      if (hasCredentialWord && hasFrontendLocation && hasPlacementVerb) {
+        actionPerformsProhibitedOp = true;
+        hasSecurityViolationPattern = true;
+        reasons.push("security: placing credentials in client-side code is equivalent to exposing them");
+      }
+    }
+  }
+
   // Check 1: Direct opposite verbs (e.g., "enable" vs "disable")
   if (lockIsProhibitive && prohibitedVerb && actionPrimaryVerb) {
     if (checkOpposites(actionPrimaryVerb, prohibitedVerb)) {
@@ -1920,54 +1962,7 @@ export function scoreConflict({ actionText, lockText }) {
   if (!intentAligned && lockIsProhibitive && actionIntent.intent === "positive" && prohibitedVerb) {
     const prohibitedIsNegative = NEGATIVE_INTENT_MARKERS.some(m =>
       prohibitedVerb === m || prohibitedVerb.startsWith(m));
-    // Only block alignment if the action actually performs the prohibited operation.
-    // Noun synonyms ("price → pricing") are incidental and should NOT block.
-    // But if the action contains the prohibited verb or its synonym ("shows" ≈ "expose"),
-    // that's a real violation signal.
     const hasDestructiveLanguageMatch = euphemismMatches.length > 0;
-
-    // Check if action text contains the prohibited verb or its synonyms
-    let actionPerformsProhibitedOp = false;
-    if (prohibitedVerb) {
-      const actionWordsLower = actionText.toLowerCase().split(/\s+/)
-        .map(w => w.replace(/[^a-z]/g, ""));
-      for (const w of actionWordsLower) {
-        if (!w) continue;
-        // Direct match (including conjugations: show/shows/showing/showed)
-        if (w === prohibitedVerb || w.startsWith(prohibitedVerb)) {
-          actionPerformsProhibitedOp = true;
-          break;
-        }
-        // Synonym match: check if word is in the same synonym group as prohibited verb
-        for (const group of SYNONYM_GROUPS) {
-          if (group.includes(prohibitedVerb)) {
-            if (group.some(syn => w === syn || w.startsWith(syn) && w.length <= syn.length + 3)) {
-              actionPerformsProhibitedOp = true;
-            }
-            break;
-          }
-        }
-        if (actionPerformsProhibitedOp) break;
-      }
-    }
-
-    // Special case: "add/put/store/embed key/secret/credential in/to frontend/component/state"
-    // is SEMANTICALLY EQUIVALENT to "expose key in frontend" — NOT an opposite action.
-    // Placing credentials in client-side code IS exposing them.
-    if (!actionPerformsProhibitedOp && (prohibitedVerb === "expose" || prohibitedVerb === "leak" || prohibitedVerb === "reveal")) {
-      // Pre-process env vars: STRIPE_SECRET_KEY → stripe secret key
-      const actionNorm = actionText
-        .replace(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g, m => m.replace(/_/g, " "))
-        .toLowerCase();
-      const hasCredentialWord = /\b(key|keys|secret|secrets|credential|credentials|token|api.?key|password|cert)\b/i.test(actionNorm);
-      const hasFrontendLocation = /\b(frontend|front.?end|client|component|state|localstorage|session.?storage|browser|ui|react|vue|angular|svelte|html|template)\b/i.test(actionNorm);
-      const hasPlacementVerb = /\b(add|put|store|embed|include|place|insert|set|hardcode|inline)\b/i.test(actionNorm);
-      if (hasCredentialWord && hasFrontendLocation && hasPlacementVerb) {
-        actionPerformsProhibitedOp = true;
-        hasSecurityViolationPattern = true;
-        reasons.push("security: placing credentials in client-side code is equivalent to exposing them");
-      }
-    }
 
     if (prohibitedIsNegative && !actionIntent.negated &&
         !hasDestructiveLanguageMatch && !actionPerformsProhibitedOp) {
@@ -2067,11 +2062,12 @@ export function scoreConflict({ actionText, lockText }) {
 
   // Check 3c: Working WITH locked technology (not replacing it)
   // "Update the Stripe UI components" vs "must always use Stripe" → working WITH Stripe → safe
+  // "Update the Stripe payment UI" vs "Stripe API keys must never be exposed" → different subject → safe
   // "Optimize Supabase queries" vs "Supabase Auth lock" → improving existing Supabase → safe
-  // "Write tests for Supabase queries" vs "Supabase lock" → testing existing tech → safe
   // But: "Update payment to use Razorpay" vs "Stripe lock" → introducing competitor → NOT safe
+  // But: "Add Stripe key to frontend" → "add" not in WORKING_WITH_VERBS → NOT safe
   if (!intentAligned && actionPrimaryVerb) {
-    const lockIsPreservationOrFreeze = /must remain|must be preserved|must always|at all times|must stay|do not replace|do not remove|do not switch|don't replace|don't remove|don't switch|uses .+ library/i.test(lockText);
+    const lockIsPreservationOrFreeze = /must remain|must be preserved|must always|at all times|must stay|must never|must not|should never|do not replace|do not remove|do not switch|don't replace|don't remove|don't switch|don't|do not|never|uses .+ library/i.test(lockText);
     if (lockIsPreservationOrFreeze) {
       // Extract specific brand/tech names from the lock text
       const lockWords = lockText.toLowerCase().split(/\s+/).map(w => w.replace(/[^a-z0-9]/g, "")).filter(w => w.length > 2);
@@ -2111,7 +2107,10 @@ export function scoreConflict({ actionText, lockText }) {
           "disable", "deactivate", "replace", "switch", "migrate", "move",
         ]);
         if (WORKING_WITH_VERBS.has(actionPrimaryVerb) && !hasCompetitorInAction &&
-            !DESTRUCTIVE_VERBS.has(actionPrimaryVerb)) {
+            !DESTRUCTIVE_VERBS.has(actionPrimaryVerb) &&
+            !actionPerformsProhibitedOp) {
+          // Guard: if the action verb is a synonym of the lock's prohibited verb
+          // (e.g., "update" ≈ "modify"), that's a real conflict, not working-with.
           intentAligned = true;
           reasons.push(
             `intent alignment: "${actionPrimaryVerb}" works WITH locked tech ` +
@@ -2231,9 +2230,9 @@ export function scoreConflict({ actionText, lockText }) {
 
   // If intent is ALIGNED, the action is COMPLIANT — slash the score to near zero
   // Shared keywords are expected (both discuss the same subject) but the action
-  // is doing the right thing.
+  // is doing the right thing. Cap at threshold-1 so aligned actions never trigger.
   if (intentAligned) {
-    score = Math.floor(score * 0.10);  // Keep only 10% of accumulated score
+    score = Math.min(Math.floor(score * 0.10), SCORING.conflictThreshold - 1);
     // Skip all further bonuses (negation, intent conflict, destructive)
   } else {
     // NOT aligned — apply standard conflict bonuses

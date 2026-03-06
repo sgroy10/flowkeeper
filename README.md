@@ -457,4 +457,4 @@ Built by **[Sandeep Roy](https://github.com/sgroy10)**
 
 ---
 
-<p align="center"><i>v4.5.4 — 600+ tests, 31 MCP tools, 0 false positives, Gemini hybrid. Because remembering isn't enough.</i></p>
+<p align="center"><i>v4.5.5 — 600+ tests, 31 MCP tools, 0 false positives, Gemini hybrid. Because remembering isn't enough.</i></p>
