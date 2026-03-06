@@ -342,16 +342,15 @@ export async function checkConflictAsync(rootOrAction, proposedActionOrLock) {
 
 /**
  * Merge heuristic result with LLM/proxy result.
- * Keeps HIGH heuristic conflicts + all LLM conflicts, deduplicates, takes MAX.
+ * Takes MAX(heuristic, LLM) confidence per lock — neither engine can override the other.
+ * The heuristic catches domain-specific patterns; the LLM catches cross-domain vocabulary.
  */
 function mergeLLMResult(heuristicResult, llmResult) {
-  const highConfidence = heuristicResult.conflictingLocks.filter(
-    (c) => c.confidence > 70
-  );
+  const allHeuristic = heuristicResult.conflictingLocks || [];
   const llmConflicts = llmResult.conflictingLocks || [];
-  const merged = [...highConfidence, ...llmConflicts];
+  const merged = [...allHeuristic, ...llmConflicts];
 
-  // Deduplicate by lock text, keeping the higher-confidence entry
+  // Deduplicate by lock text, keeping the higher-confidence entry (MAX per lock)
   const byText = new Map();
   for (const c of merged) {
     const existing = byText.get(c.text);
@@ -365,15 +364,17 @@ function mergeLLMResult(heuristicResult, llmResult) {
     return {
       hasConflict: false,
       conflictingLocks: [],
-      analysis: `Heuristic had partial signal, LLM verified as safe. No conflicts.`,
+      analysis: `Both heuristic and LLM agree: no conflicts detected.`,
     };
   }
 
   unique.sort((a, b) => b.confidence - a.confidence);
+  const heuristicCount = allHeuristic.filter(c => !llmConflicts.some(l => l.text === c.text)).length;
+  const llmOnlyCount = llmConflicts.filter(l => !allHeuristic.some(h => h.text === l.text)).length;
   return {
     hasConflict: true,
     conflictingLocks: unique,
-    analysis: `${unique.length} conflict(s) confirmed (${highConfidence.length} heuristic + ${llmConflicts.length} LLM-verified).`,
+    analysis: `${unique.length} conflict(s) detected (${heuristicCount} heuristic-only, ${llmOnlyCount} LLM-only, ${unique.length - heuristicCount - llmOnlyCount} both).`,
   };
 }
 
