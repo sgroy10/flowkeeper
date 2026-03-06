@@ -28,7 +28,7 @@ export const SYNONYM_GROUPS = [
 
   // --- Modification actions ---
   ["change", "modify", "alter", "update", "mutate", "transform",
-   "rewrite", "revise", "amend", "adjust", "tweak"],
+   "rewrite", "revise", "amend", "adjust", "tweak", "touch", "tamper"],
   ["replace", "swap", "substitute", "switch", "exchange",
    "override", "overwrite"],
   ["move", "relocate", "migrate", "transfer", "shift", "rearrange", "reorganize",
@@ -1371,6 +1371,13 @@ function _extractSubjectsInline(text) {
   content = content.replace(/\s+is\s+frozen\b.*$/i, "").trim();
   content = content.replace(/\s+must\s+(?:be\s+)?(?:preserved|remain)\b.*$/i, "").trim();
   content = content.replace(/\s*[—–]\s+(?:prohibited|no\s+|must\s+not|deletion|do\s+not|migration)\b.*$/i, "").trim();
+
+  // Strip comma-separated explanatory clauses
+  // "KYC verification flow, it's SEC-compliant" → "KYC verification flow"
+  // "patient records, which are HIPAA-protected" → "patient records"
+  // "the auth system, because it's production-critical" → "the auth system"
+  content = content.replace(/,\s+(?:it|they|that|this|which|who)\s*(?:'s|'re|is|are|was|were|has|have|had)\b.*$/i, "").trim();
+  content = content.replace(/,\s+(?:because|since|as|for|due\s+to|given\s+that)\b.*$/i, "").trim();
 
   // Strip leading verb
   const words = content.split(/\s+/);

@@ -84,32 +84,28 @@ export function addLock(root, text, tags, source) {
   const brain = ensureInit(root);
   const lockId = newId("lock");
 
-  // Smart Lock Authoring — auto-normalize to prevent verb contamination
-  const normResult = normalizeLock(text);
-
+  // Store the user's exact words — no rewriting.
+  // The semantic engine handles verb contamination via subject extraction
+  // and scope matching, so rewriting is no longer needed.
   brain.specLock.items.unshift({
     id: lockId,
-    text: normResult.normalized,
-    originalText: normResult.wasRewritten ? normResult.original : undefined,
+    text: text,
     createdAt: nowIso(),
     source: source || "user",
     tags: tags || [],
     active: true,
   });
   const eventId = newId("evt");
-  const rewriteNote = normResult.wasRewritten
-    ? ` (auto-rewritten from: "${normResult.original.substring(0, 60)}")`
-    : "";
   const event = {
     eventId,
     type: "lock_added",
     at: nowIso(),
     files: [],
-    summary: `Lock added: ${normResult.normalized.substring(0, 80)}${rewriteNote}`,
+    summary: `Lock added: ${text.substring(0, 80)}`,
     patchPath: "",
   };
   recordEvent(root, brain, event);
-  return { brain, lockId, rewritten: normResult.wasRewritten, rewriteReason: normResult.reason };
+  return { brain, lockId, rewritten: false, rewriteReason: null };
 }
 
 export function removeLock(root, lockId) {
