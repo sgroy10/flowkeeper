@@ -59,6 +59,7 @@ export {
   getEnforcementConfig,
   setEnforcementMode,
   enforceConflictCheck,
+  enforceConflictCheckAsync,
   overrideLock,
   getOverrideHistory,
 } from "./enforcer.js";

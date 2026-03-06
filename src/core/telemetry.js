@@ -257,7 +257,7 @@ export async function flushToRemote(root) {
   // Build anonymized payload
   const payload = {
     instanceId: summary.instanceId,
-    version: "4.4.2",
+    version: "4.4.3",
     totalCalls: summary.totalCalls,
     avgResponseMs: summary.avgResponseMs,
     conflicts: summary.conflicts,

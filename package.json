@@ -1,82 +1,250 @@
 {
+
   "name": "speclock",
-  "version": "4.4.2",
+
+  "version": "4.4.3",
+
   "description": "AI constraint engine with Gemini LLM universal detection, Policy-as-Code DSL, OAuth/OIDC SSO, admin dashboard, telemetry, API key auth, RBAC, AES-256-GCM encryption, hard enforcement, semantic pre-commit, HMAC audit chain, SOC 2/HIPAA compliance. Cross-platform: MCP + direct API. 31 MCP tools + CLI. Enterprise platform.",
+
   "type": "module",
+
   "main": "src/mcp/server.js",
+
   "bin": {
-    "speclock": "./bin/speclock.js"
+
+  
+  "speclock": "./bin/speclock.js"
+
   },
+
   "scripts": {
-    "start": "node src/mcp/server.js",
-    "serve": "node src/mcp/server.js",
-    "test": "node --experimental-vm-modules node_modules/.bin/jest"
+
+  
+  "start": "node src/mcp/server.js",
+
+  
+  "serve": "node src/mcp/server.js",
+
+  
+  "test": "node --experimental-vm-modules node_modules/.bin/jest"
+
   },
+
   "keywords": [
-    "mcp",
-    "mcp-server",
-    "ai",
-    "ai-memory",
-    "ai-continuity",
-    "context",
-    "memory",
-    "claude",
-    "claude-code",
-    "cursor",
-    "codex",
-    "windsurf",
-    "cline",
-    "speclock",
-    "ai-amnesia",
-    "model-context-protocol",
-    "drift-detection",
-    "constraint-enforcement",
-    "enterprise",
-    "soc2",
-    "hipaa",
-    "compliance",
-    "audit-trail",
-    "hmac",
-    "encryption",
-    "aes-256",
-    "api-key",
-    "authentication",
-    "rbac",
-    "policy-as-code",
-    "sso",
-    "oauth",
-    "oidc",
-    "dashboard",
-    "telemetry"
+
+  
+  "mcp",
+
+  
+  "mcp-server",
+
+  
+  "ai",
+
+  
+  "ai-memory",
+
+  
+  "ai-continuity",
+
+  
+  "context",
+
+  
+  "memory",
+
+  
+  "claude",
+
+  
+  "claude-code",
+
+  
+  "cursor",
+
+  
+  "codex",
+
+  
+  "windsurf",
+
+  
+  "cline",
+
+  
+  "speclock",
+
+  
+  "ai-amnesia",
+
+  
+  "model-context-protocol",
+
+  
+  "drift-detection",
+
+  
+  "constraint-enforcement",
+
+  
+  "enterprise",
+
+  
+  "soc2",
+
+  
+  "hipaa",
+
+  
+  "compliance",
+
+  
+  "audit-trail",
+
+  
+  "hmac",
+
+  
+  "encryption",
+
+  
+  "aes-256",
+
+  
+  "api-key",
+
+  
+  "authentication",
+
+  
+  "rbac",
+
+  
+  "policy-as-code",
+
+  
+  "sso",
+
+  
+  "oauth",
+
+  
+  "oidc",
+
+  
+  "dashboard",
+
+  
+  "telemetry"
+
   ],
+
   "author": "Sandeep Roy (https://github.com/sgroy10)",
+
   "license": "MIT",
+
   "homepage": "https://github.com/sgroy10/speclock#readme",
+
   "bugs": {
-    "url": "https://github.com/sgroy10/speclock/issues"
+
+  
+  "url": "https://github.com/sgroy10/speclock/issues"
+
   },
+
   "repository": {
-    "type": "git",
-    "url": "git+https://github.com/sgroy10/speclock.git"
+
+  
+  "type": "git",
+
+  
+  "url": "git+https://github.com/sgroy10/speclock.git"
+
   },
+
   "engines": {
-    "node": ">=18"
+
+  
+  "node": ">=18"
+
   },
+
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.26.0",
-    "chokidar": "^3.6.0",
-    "zod": "^3.25.0"
+
+  
+  "@modelcontextprotocol/sdk": "^1.26.0",
+
+  
+  "chokidar": "^3.6.0",
+
+  
+  "zod": "^3.25.0"
+
   },
+
   "files": [
-    "bin/",
-    "src/",
-    "src/dashboard/",
-    "README.md",
-    "SPECLOCK-INSTRUCTIONS.md",
-    "LICENSE"
+
+  
+  "bin/",
+
+  
+  "src/",
+
+  
+  "src/dashboard/",
+
+  
+  "README.md",
+
+  
+  "SPECLOCK-INSTRUCTIONS.md",
+
+  
+  "LICENSE"
+
   ],
+
   "devDependencies": {
-    "esbuild": "^0.27.3",
-    "jest": "^30.2.0"
+
+  
+  "esbuild": "^0.27.3",
+
+  
+  "jest": "^30.2.0"
+
+  },
+
+  "speclock": {
+
+  
+  "active": true,
+
+  
+  "message": "STOP — This project has SpecLock constraints. Read SPECLOCK.md and .speclock/context/latest.md BEFORE making ANY changes. Run 'npx speclock check' before ALL code changes. If a lock below is violated, STOP and ask user to unlock.",
+
+  
+  "locks": [
+
+  
+  
+  "Game balance configuration must not be changed",
+
+  
+  
+  "Patient records must never be deleted",
+
+  
+  
+  "No breaking changes to public API"
+
+  
+  ],
+
+  
+  "context": ".speclock/context/latest.md",
+
+  
+  "rules": "SPECLOCK.md"
+
   }
 }

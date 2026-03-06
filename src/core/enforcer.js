@@ -191,6 +191,135 @@ export function enforceConflictCheck(root, proposedAction) {
 }
 
 /**
+ * Async version of enforceConflictCheck — uses Gemini proxy for grey-zone cases.
+ * Falls back to heuristic-only if proxy is unavailable.
+ */
+export async function enforceConflictCheckAsync(root, proposedAction) {
+  const brain = readBrain(root);
+  if (!brain) {
+    return {
+      hasConflict: false,
+      blocked: false,
+      mode: "advisory",
+      conflictingLocks: [],
+      analysis: "SpecLock not initialized. No enforcement.",
+    };
+  }
+
+  const config = getEnforcementConfig(brain);
+  const activeLocks = (brain.specLock?.items || []).filter((l) => l.active !== false);
+
+  if (activeLocks.length === 0) {
+    return {
+      hasConflict: false,
+      blocked: false,
+      mode: config.mode,
+      conflictingLocks: [],
+      analysis: "No active locks. No constraints to check against.",
+    };
+  }
+
+  // Run heuristic against all active locks
+  const conflicting = [];
+  for (const lock of activeLocks) {
+    const result = analyzeConflict(proposedAction, lock.text);
+    if (result.isConflict) {
+      conflicting.push({
+        id: lock.id,
+        text: lock.text,
+        confidence: result.confidence,
+        level: result.level,
+        reasons: result.reasons,
+        source: "heuristic",
+      });
+    }
+  }
+
+  // If all heuristic conflicts are HIGH, trust them — skip proxy
+  const allHigh = conflicting.length > 0 && conflicting.every((c) => c.confidence > 70);
+
+  // Grey zone: call proxy for Gemini coverage
+  if (!allHigh) {
+    try {
+      const { checkConflictAsync } = await import("./conflict.js");
+      const asyncResult = await checkConflictAsync(root, proposedAction);
+
+      if (asyncResult.hasConflict) {
+        // Merge: use async result's locks (which already merged heuristic + proxy)
+        const merged = new Map();
+        for (const c of conflicting) merged.set(c.text, c);
+        for (const c of asyncResult.conflictingLocks) {
+          const existing = merged.get(c.text);
+          if (!existing || c.confidence > existing.confidence) {
+            merged.set(c.text, {
+              id: c.id || c.lockId,
+              text: c.text,
+              confidence: c.confidence,
+              level: c.level,
+              reasons: c.reasons || [],
+              source: c.source || "proxy",
+            });
+          }
+        }
+        conflicting.length = 0;
+        conflicting.push(...merged.values());
+      }
+    } catch (_) {
+      // Proxy unavailable — continue with heuristic results
+    }
+  }
+
+  if (conflicting.length === 0) {
+    return {
+      hasConflict: false,
+      blocked: false,
+      mode: config.mode,
+      conflictingLocks: [],
+      analysis: `Checked against ${activeLocks.length} active lock(s). No conflicts detected. Proceed with caution.`,
+    };
+  }
+
+  // Sort by confidence descending
+  conflicting.sort((a, b) => b.confidence - a.confidence);
+
+  const topConfidence = conflicting[0].confidence;
+  const meetsThreshold = topConfidence >= config.blockThreshold;
+  const blocked = config.mode === "hard" && meetsThreshold;
+
+  const details = conflicting
+    .map(
+      (c) =>
+        `- [${c.level}] "${c.text}" (confidence: ${c.confidence}%)\n  Reasons: ${c.reasons.join("; ")}`
+    )
+    .join("\n");
+
+  addViolation(brain, {
+    at: nowIso(),
+    action: proposedAction,
+    locks: conflicting.map((c) => ({ id: c.id, text: c.text, confidence: c.confidence, level: c.level })),
+    topLevel: conflicting[0].level,
+    topConfidence,
+    enforced: blocked,
+    mode: config.mode,
+  });
+  writeBrain(root, brain);
+
+  const modeLabel = blocked
+    ? "BLOCKED — Hard enforcement active. This action cannot proceed."
+    : "WARNING — Advisory mode. Review before proceeding.";
+
+  return {
+    hasConflict: true,
+    blocked,
+    mode: config.mode,
+    threshold: config.blockThreshold,
+    topConfidence,
+    conflictingLocks: conflicting,
+    analysis: `${modeLabel}\n\nConflict with ${conflicting.length} lock(s):\n${details}`,
+  };
+}
+
+/**
  * Override a lock for a specific action, with a reason.
  * Logged to audit trail. Triggers escalation if overridden too many times.
  */

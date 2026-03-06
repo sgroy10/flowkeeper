@@ -24,6 +24,7 @@ import {
   exportCompliance,
   getLicenseInfo,
   enforceConflictCheck,
+  enforceConflictCheckAsync,
   setEnforcementMode,
   overrideLock,
   getOverrideHistory,
@@ -116,7 +117,7 @@ function refreshContext(root) {
 
 function printHelp() {
   console.log(`
-SpecLock v4.4.2 — AI Constraint Engine (Gemini LLM + Policy-as-Code + SSO + Dashboard + Telemetry + Auth + RBAC + Encryption)
+SpecLock v4.4.3 — AI Constraint Engine (Gemini LLM + Policy-as-Code + SSO + Dashboard + Telemetry + Auth + RBAC + Encryption)
 Developed by Sandeep Roy (github.com/sgroy10)
 
 Usage: speclock <command> [options]
@@ -452,7 +453,8 @@ Tip: When starting a new chat, tell the AI:
       console.error('Usage: speclock check "what you plan to do"');
       process.exit(1);
     }
-    const result = enforceConflictCheck(root, text);
+    // Use async version for Gemini proxy coverage on grey-zone cases
+    const result = await enforceConflictCheckAsync(root, text);
     if (result.hasConflict) {
       console.log(`\n${result.blocked ? "BLOCKED" : "CONFLICT DETECTED"}`);
       console.log("=".repeat(50));
