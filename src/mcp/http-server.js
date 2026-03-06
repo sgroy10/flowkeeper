@@ -91,7 +91,7 @@ import { fileURLToPath } from "url";
 import _path from "path";
 
 const PROJECT_ROOT = process.env.SPECLOCK_PROJECT_ROOT || process.cwd();
-const VERSION = "4.3.4";
+const VERSION = "4.4.0";
 const AUTHOR = "Sandeep Roy";
 const START_TIME = Date.now();
 
@@ -221,13 +221,8 @@ function createSpecLockServer() {
   // Tool 7: speclock_add_note
   server.tool("speclock_add_note", "Add a pinned note for reference.", { text: z.string().min(1).describe("The note text"), pinned: z.boolean().default(true).describe("Whether to pin this note") }, async ({ text, pinned }) => {
     ensureInit(PROJECT_ROOT);
-    const brain = readBrain(PROJECT_ROOT);
-    const note = { id: newId(), text, pinned, createdAt: nowIso() };
-    brain.state.notes.push(note);
-    writeBrain(PROJECT_ROOT, brain);
-    appendEvent(PROJECT_ROOT, { type: "note_added", noteId: note.id, text });
-    bumpEvents(PROJECT_ROOT);
-    return { content: [{ type: "text", text: `Note added [${note.id}]: ${text}` }] };
+    const result = addNote(PROJECT_ROOT, text, pinned);
+    return { content: [{ type: "text", text: `Note added [${result.noteId}]: ${text}` }] };
   });
 
   // Tool 8: speclock_set_deploy_facts

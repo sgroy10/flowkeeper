@@ -144,3 +144,59 @@ AI:   🔓 Unlocked. Proceeding with auth file changes.
 1. Add to `~/.claude.json` or `.mcp.json`: `{"mcpServers":{"speclock":{"command":"npx","args":["-y","speclock","serve","--project","."]}}}`
 2. Add the instruction above to `CLAUDE.md`
 3. Done.
+
+---
+
+## For Bolt.new, Kimi, Replit, and other platforms WITHOUT MCP
+
+These platforms don't have MCP connectors. SpecLock works via `npm install` + direct JavaScript API. The conflict checking uses a cloud proxy to get Gemini LLM coverage automatically — no API key needed.
+
+### Setup:
+1. Install: `npm install speclock`
+2. Paste the instructions below into the platform's Knowledge / System Prompt / Project Instructions.
+
+### Instructions to paste:
+
+```
+## SpecLock Rules (MANDATORY — follow on every message)
+
+This project uses SpecLock for constraint protection. SpecLock is installed via npm.
+
+### How to check conflicts:
+Before making ANY significant code change, run this check:
+
+const { checkConflictAsync } = await import("speclock/src/core/engine.js");
+const result = await checkConflictAsync("description of what you are about to do", ["lock text 1", "lock text 2"]);
+if (result.hasConflict) {
+  // STOP — warn the user about the conflict
+  // result.analysis contains the details
+}
+
+### How to check conflicts (alternative — pass lock text directly):
+const { checkConflictAsync } = await import("speclock/src/core/engine.js");
+const result = await checkConflictAsync("Add Razorpay payment gateway", "Never change from Stripe payment integration");
+// result.hasConflict will be true
+
+### Rules:
+1. MAINTAIN A LIST of user constraints (locks) in memory. When the user says "never", "always", "don't touch", "lock this" — add it to your lock list.
+2. BEFORE MODIFYING CODE: Call checkConflictAsync with what you're about to do and ALL active locks. If hasConflict is true, STOP and warn the user.
+3. The function is ASYNC — always use await. It calls a cloud API for accurate detection across all domains.
+4. If the function is unavailable, at minimum do a manual check: does your proposed action violate any of the user's stated constraints?
+```
+
+### Example usage in code:
+```javascript
+import { checkConflictAsync } from "speclock/src/core/engine.js";
+
+// Check a single lock
+const r = await checkConflictAsync("Switch to MongoDB", "Never change the database technology");
+console.log(r.hasConflict); // true
+console.log(r.analysis);    // "1 conflict(s) confirmed..."
+
+// Check multiple locks
+const r2 = await checkConflictAsync("Add Razorpay payments", [
+  "Never change from Stripe",
+  "Never modify the payment system"
+]);
+console.log(r2.hasConflict); // true
+```
