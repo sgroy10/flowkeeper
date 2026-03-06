@@ -104,6 +104,10 @@ export const SYNONYM_GROUPS = [
    "ledger", "general ledger", "accounts"],
   ["trade", "trades", "executed trade", "trade record", "order",
    "position", "portfolio"],
+  ["salary", "salaries", "payroll", "wages", "compensation",
+   "remuneration", "stipend"],
+  ["payment gateway", "payment provider", "payment processor",
+   "payment service", "payment platform"],
 
   // --- IoT / firmware ---
   ["firmware", "firmware update", "ota", "over the air",
@@ -235,6 +239,7 @@ export const EUPHEMISM_MAP = {
   "pull the plug":  ["disable", "stop", "remove"],
   "skip":           ["disable", "bypass", "ignore"],
   "bypass":         ["disable", "circumvent", "skip"],
+  "disable":        ["bypass", "circumvent", "turn off", "deactivate"],
   "work around":    ["bypass", "circumvent"],
   "shortcut":       ["bypass", "skip"],
 
@@ -384,6 +389,36 @@ export const CONCEPT_MAP = {
                         "transaction"],
   "invoice":           ["billing", "payment", "charge", "transaction", "accounts receivable"],
 
+  // Salary / Payroll / Compensation
+  "salary":            ["payroll", "wages", "compensation", "financial records",
+                        "accounting", "payment"],
+  "payroll":           ["salary", "wages", "compensation", "financial records",
+                        "accounting", "payment"],
+  "wages":             ["salary", "payroll", "compensation", "financial records"],
+  "compensation":      ["salary", "payroll", "wages", "financial records"],
+
+  // Payment providers (brand names → payment gateway concept)
+  "razorpay":          ["payment gateway", "payment processing", "payment",
+                        "transaction", "billing"],
+  "phonepe":           ["payment gateway", "payment processing", "payment",
+                        "upi", "transaction"],
+  "ccavenue":          ["payment gateway", "payment processing", "payment",
+                        "transaction", "billing"],
+  "paytm":             ["payment gateway", "payment processing", "payment",
+                        "upi", "transaction"],
+  "paypal":            ["payment gateway", "payment processing", "payment",
+                        "transaction", "billing"],
+  "stripe":            ["payment gateway", "payment processing", "payment",
+                        "transaction", "billing"],
+  "square":            ["payment gateway", "payment processing", "payment",
+                        "transaction", "billing"],
+  "adyen":             ["payment gateway", "payment processing", "payment",
+                        "transaction", "billing"],
+  "braintree":         ["payment gateway", "payment processing", "payment",
+                        "transaction", "billing"],
+  "upi":               ["payment gateway", "payment processing", "phonepe",
+                        "paytm", "transaction", "payment"],
+
   // Logistics / Supply Chain
   "shipment":          ["cargo", "freight", "consignment", "delivery", "package",
                         "manifest", "tracking", "shipping"],
@@ -425,9 +460,18 @@ export const CONCEPT_MAP = {
   // E-commerce
   "cart":              ["checkout", "purchase", "shopping cart"],
   "payment processing":["payment", "billing", "transaction",
-                        "stripe", "payment gateway"],
+                        "stripe", "payment gateway", "payment provider"],
   "payment gateway":   ["payment processing", "stripe", "paypal",
-                        "billing", "transaction"],
+                        "billing", "transaction", "payment provider",
+                        "payment processor"],
+  "payment provider":  ["payment gateway", "payment processing", "payment",
+                        "transaction", "billing"],
+  "payment processor": ["payment gateway", "payment processing", "payment",
+                        "transaction", "billing"],
+  "payment service":   ["payment gateway", "payment processing", "payment",
+                        "transaction", "billing"],
+  "payment platform":  ["payment gateway", "payment processing", "payment",
+                        "transaction", "billing"],
   "product":           ["item", "sku", "catalog", "merchandise", "product listing"],
   "price":             ["pricing", "cost", "amount", "rate", "charge"],
 
@@ -442,6 +486,13 @@ export const CONCEPT_MAP = {
   "flash":             ["firmware", "firmware update", "overwrite"],
   "signed firmware":   ["verified firmware", "trusted firmware", "secure boot"],
   "unsigned firmware": ["unverified firmware", "untrusted firmware", "insecure"],
+
+  // Safety systems
+  "safety":            ["safety system", "safeguard", "interlock", "protection"],
+  "safety system":     ["safety", "interlock", "safeguard", "protection", "fail-safe"],
+  "safety systems":    ["safety", "interlock", "safeguard", "protection", "fail-safe"],
+  "interlock":         ["safety", "safety system", "safeguard", "protection", "fail-safe"],
+  "safeguard":         ["safety", "safety system", "interlock", "protection"],
 
   // Network
   "network segments":  ["vlans", "subnets", "network zones",
@@ -761,6 +812,22 @@ export function tokenize(text) {
       words.push(w.slice(0, -1));
     }
   }
+
+  // Verb tense normalization — so "changed" matches "change",
+  // "processed" matches "process", "modifying" matches "modify"
+  for (const w of rawWords) {
+    if (w.endsWith("ed") && w.length > 4) {
+      words.push(w.slice(0, -1));  // "changed" → "change" (verb+d)
+      words.push(w.slice(0, -2));  // "processed" → "process" (verb+ed)
+      if (w.endsWith("ied") && w.length > 5) {
+        words.push(w.slice(0, -3) + "y");  // "modified" → "modify"
+      }
+    }
+    if (w.endsWith("ing") && w.length > 5) {
+      words.push(w.slice(0, -3));         // "processing" → "process"
+      words.push(w.slice(0, -3) + "e");   // "changing" → "change"
+    }
+  }
   const uniqueWords = [...new Set(words)];
 
   const all = [...new Set([...phrases, ...uniqueWords])];
@@ -979,15 +1046,38 @@ function extractProhibitedVerb(lockText) {
   for (const pattern of patterns) {
     const match = lower.match(pattern);
     if (match) {
-      const verb = match[1].trim();
+      let verb = match[1].trim();
+      // Handle passive voice: "must not be changed" → "changed" → stem → "change"
+      if (verb.startsWith("be ")) verb = verb.slice(3);
       // Check multi-word markers first
       const allMarkers = [...NEGATIVE_INTENT_MARKERS, ...POSITIVE_INTENT_MARKERS]
         .sort((a, b) => b.length - a.length);
       for (const marker of allMarkers) {
         if (verb.startsWith(marker)) return marker;
       }
-      // Return the first word
-      return verb.split(/\s+/)[0];
+      // Stem -ed/-ing verb forms: "changed" → "change", "modified" → "modify"
+      const firstWord = verb.split(/\s+/)[0];
+      if (firstWord.endsWith("ed") && firstWord.length > 4) {
+        const stem1 = firstWord.slice(0, -1);  // changed → change
+        const stem2 = firstWord.slice(0, -2);  // processed → process
+        for (const marker of allMarkers) {
+          if (stem1 === marker || stem2 === marker) return marker;
+        }
+        if (firstWord.endsWith("ied") && firstWord.length > 5) {
+          const stem3 = firstWord.slice(0, -3) + "y";  // modified → modify
+          for (const marker of allMarkers) {
+            if (stem3 === marker) return marker;
+          }
+        }
+      }
+      if (firstWord.endsWith("ing") && firstWord.length > 5) {
+        const stem1 = firstWord.slice(0, -3);       // processing → process
+        const stem2 = firstWord.slice(0, -3) + "e"; // changing → change
+        for (const marker of allMarkers) {
+          if (stem1 === marker || stem2 === marker) return marker;
+        }
+      }
+      return firstWord;
     }
   }
   return null;
@@ -1098,6 +1188,7 @@ const _CONTAMINATING_VERBS = new Set([
   "reconcile", "reverse", "recalculate", "backdate", "rebalance",
   "reroute", "divert", "reassign", "rebook", "cancel",
   "upgrade", "downgrade", "patch", "bump",
+  "optimize", "streamline", "modernize", "overhaul", "revamp",
 ]);
 
 const _FILLER_WORDS = new Set([
@@ -1806,6 +1897,30 @@ export function scoreConflict({ actionText, lockText }) {
           `no scope overlap — different components despite shared vocabulary`);
       }
     }
+
+    // 5c: UI/cosmetic changes that share a location word with a system lock.
+    // "Change the font on the login page" shares "login" with auth locks,
+    // but changing a font/color/style is a visual change, not a system modification.
+    // Only applies when scope overlap is WEAK (shared location word, not shared target).
+    const UI_COSMETIC_WORDS = new Set([
+      "font", "fonts", "color", "colors", "colour", "theme", "themes",
+      "styling", "style", "styles", "css", "icon", "icons", "layout",
+      "margin", "padding", "border", "background", "typography", "spacing",
+      "alignment", "animation", "transition", "hover", "tooltip",
+      "placeholder", "logo", "image", "banner", "hero", "avatar",
+      "sidebar", "navigation", "menu", "breadcrumb", "footer",
+    ]);
+    if (!intentAligned && !hasStrongScopeMatch && !hasStrongVocabMatch) {
+      const actionLower = actionText.toLowerCase();
+      const actionWords = actionLower.split(/\s+/).map(w => w.replace(/[^a-z]/g, ""));
+      const hasUISubject = actionWords.some(w => UI_COSMETIC_WORDS.has(w));
+      if (hasUISubject) {
+        intentAligned = true;
+        reasons.push(
+          `intent alignment: UI/cosmetic change — visual modification, ` +
+          `not system logic change`);
+      }
+    }
   }
 
   // If intent is ALIGNED, the action is COMPLIANT — slash the score to near zero
@@ -1821,10 +1936,6 @@ export function scoreConflict({ actionText, lockText }) {
     //    Either: scope overlap (subject extraction confirms same target)
     //    Or: 2+ direct word overlaps (not just a single shared word)
     //    Or: phrase overlap (multi-word match is strong signal)
-    //    Or: concept match (domain-level relevance)
-    // Concept matches contribute to base score but should NOT gate the negation
-    // bonus — they're too indirect ("account" → "ledger" via concept map shouldn't
-    // trigger the +35 negation bonus). Only direct evidence counts.
     const hasStrongSubjectMatch = hasStrongScopeMatch ||
       directOverlap.length >= 2 ||
       phraseOverlap.length > 0;
