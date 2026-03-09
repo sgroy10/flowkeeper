@@ -621,3 +621,20 @@ export {
   extractLockSubject,
   rewriteLock,
 } from "./lock-author.js";
+
+// --- Spec Compiler (v5.0) ---
+export {
+  compileSpec,
+  compileFile,
+  compileAndApply,
+} from "./spec-compiler.js";
+
+// --- Code Graph (v5.0) ---
+export {
+  buildGraph,
+  getOrBuildGraph,
+  getBlastRadius,
+  mapLocksToFiles,
+  getModules,
+  getCriticalPaths,
+} from "./code-graph.js";

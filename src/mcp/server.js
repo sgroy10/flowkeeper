@@ -49,6 +49,14 @@ import {
   CONSTRAINT_TYPES,
   OPERATORS,
   formatTypedLockText,
+  compileSpec,
+  compileAndApply,
+  buildGraph,
+  getOrBuildGraph,
+  getBlastRadius,
+  mapLocksToFiles,
+  getModules,
+  getCriticalPaths,
 } from "../core/engine.js";
 import { generateContext, generateContextPack } from "../core/context.js";
 import {
@@ -1547,6 +1555,164 @@ server.tool(
         text: `Threshold updated for ${params.lockId}:\nOld: ${JSON.stringify(result.oldValues)}\nNew: ${JSON.stringify(result.newValues)}\nUpdated description: ${result.brain.specLock.items.find(l => l.id === params.lockId)?.text}`,
       }],
     };
+  }
+);
+
+// --- Spec Compiler (v5.0) ---
+
+server.tool(
+  "speclock_compile_spec",
+  "Compile natural language text (PRDs, READMEs, architecture docs, chat logs) into structured SpecLock constraints. Extracts text locks, typed locks (numerical/range/state/temporal), decisions, and notes. Set autoApply=true to automatically add extracted items to brain.json.",
+  {
+    text: z.string().describe("Natural language text to compile into constraints"),
+    autoApply: z.boolean().optional().default(false).describe("If true, automatically apply extracted constraints to brain.json"),
+  },
+  async ({ text, autoApply }) => {
+    const perm = requirePermission("speclock_compile_spec");
+    if (!perm.allowed) return { content: [{ type: "text", text: perm.error }], isError: true };
+
+    const result = autoApply
+      ? await compileAndApply(PROJECT_ROOT, text)
+      : await compileSpec(PROJECT_ROOT, text);
+
+    if (!result.success) {
+      return { content: [{ type: "text", text: `Compilation failed: ${result.error}` }], isError: true };
+    }
+
+    const lines = [
+      `Spec Compiler Results:`,
+      `  Text Locks: ${result.locks.length}`,
+      `  Typed Locks: ${result.typedLocks.length}`,
+      `  Decisions: ${result.decisions.length}`,
+      `  Notes: ${result.notes.length}`,
+    ];
+
+    if (result.locks.length > 0) {
+      lines.push(`\nExtracted Locks:`);
+      result.locks.forEach((l, i) => lines.push(`  ${i + 1}. ${l.text} [${(l.tags || []).join(", ")}]`));
+    }
+    if (result.typedLocks.length > 0) {
+      lines.push(`\nExtracted Typed Locks:`);
+      result.typedLocks.forEach((tl, i) => lines.push(`  ${i + 1}. [${tl.constraintType}] ${tl.description || tl.metric}`));
+    }
+    if (result.decisions.length > 0) {
+      lines.push(`\nExtracted Decisions:`);
+      result.decisions.forEach((d, i) => lines.push(`  ${i + 1}. ${d.text}`));
+    }
+    if (result.notes.length > 0) {
+      lines.push(`\nExtracted Notes:`);
+      result.notes.forEach((n, i) => lines.push(`  ${i + 1}. ${n.text}`));
+    }
+
+    if (autoApply && result.applied) {
+      lines.push(`\nApplied to brain.json: ${result.totalApplied} items (${result.applied.locks} locks, ${result.applied.typedLocks} typed, ${result.applied.decisions} decisions, ${result.applied.notes} notes)`);
+    }
+
+    if (result.summary) lines.push(`\nSummary: ${result.summary}`);
+
+    return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+);
+
+// --- Code Graph (v5.0) ---
+
+server.tool(
+  "speclock_build_graph",
+  "Build or refresh the code dependency graph. Scans JS/TS/Python source files, parses imports, and builds an adjacency graph. The graph is cached in .speclock/code-graph.json and auto-rebuilds when stale (>1 hour).",
+  {},
+  async () => {
+    const perm = requirePermission("speclock_build_graph");
+    if (!perm.allowed) return { content: [{ type: "text", text: perm.error }], isError: true };
+
+    const graph = buildGraph(PROJECT_ROOT, { force: true });
+
+    const lines = [
+      `Code Graph Built:`,
+      `  Total Files: ${graph.stats.totalFiles}`,
+      `  Total Edges: ${graph.stats.totalEdges}`,
+      `  Entry Points: ${graph.stats.entryPoints.length}`,
+      `  Languages: ${Object.entries(graph.stats.languages).map(([k, v]) => `${k}(${v})`).join(", ")}`,
+    ];
+
+    if (graph.stats.entryPoints.length > 0) {
+      lines.push(`\nEntry Points:`);
+      graph.stats.entryPoints.slice(0, 10).forEach(ep => lines.push(`  - ${ep}`));
+    }
+
+    return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+);
+
+server.tool(
+  "speclock_blast_radius",
+  "Calculate the blast radius of changing a specific file. Shows direct and transitive dependents, depth, and impact percentage. Useful for understanding the risk of modifying a file.",
+  {
+    file: z.string().describe("Relative file path to analyze (e.g., 'src/core/memory.js')"),
+  },
+  async ({ file }) => {
+    const perm = requirePermission("speclock_blast_radius");
+    if (!perm.allowed) return { content: [{ type: "text", text: perm.error }], isError: true };
+
+    const result = getBlastRadius(PROJECT_ROOT, file);
+
+    if (!result.found) {
+      return { content: [{ type: "text", text: `File not found in graph: ${file}\nTry running speclock_build_graph first.` }], isError: true };
+    }
+
+    const lines = [
+      `Blast Radius for ${file}:`,
+      `  Direct Dependents: ${result.directDependents.length}`,
+      `  Transitive Dependents: ${result.transitiveDependents.length}`,
+      `  Max Depth: ${result.depth}`,
+      `  Impact: ${result.impactPercent}% (${result.blastRadius}/${result.totalFiles} files)`,
+    ];
+
+    if (result.directDependents.length > 0) {
+      lines.push(`\nDirect Dependents:`);
+      result.directDependents.forEach(f => lines.push(`  - ${f}`));
+    }
+
+    if (result.transitiveDependents.length > result.directDependents.length) {
+      lines.push(`\nAll Affected Files:`);
+      result.transitiveDependents.forEach(f => lines.push(`  - ${f}`));
+    }
+
+    return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+);
+
+server.tool(
+  "speclock_map_locks",
+  "Map all active locks to actual code files using the dependency graph. Shows which files each lock protects and the combined blast radius. Helps understand the structural impact of constraints.",
+  {},
+  async () => {
+    const perm = requirePermission("speclock_map_locks");
+    if (!perm.allowed) return { content: [{ type: "text", text: perm.error }], isError: true };
+
+    const mappings = mapLocksToFiles(PROJECT_ROOT);
+
+    if (mappings.length === 0) {
+      return { content: [{ type: "text", text: "No active locks to map. Add locks first." }] };
+    }
+
+    const lines = [`Lock-to-File Mappings (${mappings.length} locks):\n`];
+
+    for (const m of mappings) {
+      lines.push(`Lock: "${m.lockText}"`);
+      lines.push(`  ID: ${m.lockId}`);
+      lines.push(`  Matched Files: ${m.matchedFiles.length}`);
+      if (m.matchedFiles.length > 0) {
+        m.matchedFiles.slice(0, 10).forEach(f => lines.push(`    - ${f}`));
+        if (m.matchedFiles.length > 10) lines.push(`    ... and ${m.matchedFiles.length - 10} more`);
+      }
+      if (m.matchedModules.length > 0) {
+        lines.push(`  Modules: ${m.matchedModules.join(", ")}`);
+      }
+      lines.push(`  Blast Radius: ${m.blastRadius} files`);
+      lines.push("");
+    }
+
+    return { content: [{ type: "text", text: lines.join("\n") }] };
   }
 );
 

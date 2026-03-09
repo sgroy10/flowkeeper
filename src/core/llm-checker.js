@@ -8,6 +8,7 @@
 // ===================================================================
 
 import { readBrain } from "./storage.js";
+import { getConfig, callLLM } from "./llm-provider.js";
 
 // --- In-memory LRU cache ---
 const CACHE_MAX = 200;
@@ -35,44 +36,6 @@ function cacheSet(key, value) {
     cache.delete(oldest);
   }
   cache.set(key, { value, ts: Date.now() });
-}
-
-// --- Configuration ---
-
-function getConfig(root) {
-  // Priority: explicit SPECLOCK key > provider-specific keys > brain.json
-  const apiKey =
-    process.env.SPECLOCK_LLM_KEY ||
-    process.env.GEMINI_API_KEY ||
-    process.env.GOOGLE_API_KEY ||
-    process.env.OPENAI_API_KEY ||
-    process.env.ANTHROPIC_API_KEY;
-
-  // Auto-detect provider from which env var is set
-  const provider =
-    process.env.SPECLOCK_LLM_PROVIDER ||
-    (process.env.SPECLOCK_LLM_KEY ? "gemini" : null) ||
-    (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY ? "gemini" : null) ||
-    (process.env.OPENAI_API_KEY ? "openai" : null) ||
-    (process.env.ANTHROPIC_API_KEY ? "anthropic" : null) ||
-    "gemini"; // default to gemini (cheapest, free tier)
-
-  if (apiKey) {
-    return { apiKey, provider };
-  }
-
-  // Check brain.json for LLM config
-  try {
-    const brain = readBrain(root);
-    if (brain?.facts?.llm) {
-      return {
-        apiKey: brain.facts.llm.apiKey,
-        provider: brain.facts.llm.provider || "gemini",
-      };
-    }
-  } catch (_) {}
-
-  return null;
 }
 
 // --- System prompt ---
@@ -103,111 +66,6 @@ Respond with ONLY valid JSON (no markdown, no explanation):
   ],
   "analysis": "one-line summary"
 }`;
-
-// --- API callers ---
-
-async function callOpenAI(apiKey, userPrompt) {
-  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.1,
-      max_tokens: 1000,
-    }),
-  });
-
-  if (!resp.ok) return null;
-  const data = await resp.json();
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) return null;
-
-  try {
-    return JSON.parse(content);
-  } catch (_) {
-    // Try to extract JSON from markdown code block
-    const match = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (match) return JSON.parse(match[1]);
-    return null;
-  }
-}
-
-async function callAnthropic(apiKey, userPrompt) {
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      system: SYSTEM_PROMPT,
-      messages: [
-        { role: "user", content: userPrompt },
-      ],
-    }),
-  });
-
-  if (!resp.ok) return null;
-  const data = await resp.json();
-  const content = data.content?.[0]?.text;
-  if (!content) return null;
-
-  try {
-    return JSON.parse(content);
-  } catch (_) {
-    const match = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (match) return JSON.parse(match[1]);
-    return null;
-  }
-}
-
-async function callGemini(apiKey, userPrompt) {
-  const resp = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: SYSTEM_PROMPT + "\n\n" + userPrompt },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 1000,
-        },
-      }),
-      signal: AbortSignal.timeout(3000), // 3s timeout for Gemini calls
-    }
-  );
-
-  if (!resp.ok) return null;
-  const data = await resp.json();
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!content) return null;
-
-  try {
-    return JSON.parse(content);
-  } catch (_) {
-    // Try to extract JSON from markdown code block
-    const match = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (match) return JSON.parse(match[1]);
-    return null;
-  }
-}
 
 // --- Main export ---
 
@@ -249,19 +107,8 @@ export async function llmCheckConflict(root, proposedAction, activeLocks) {
   const lockList = activeLocks.map((l, i) => `${i + 1}. "${l.text}"`).join("\n");
   const userPrompt = `Active SpecLocks:\n${lockList}\n\nProposed Action: "${proposedAction}"\n\nDoes this action conflict with any lock?`;
 
-  // Call LLM
-  let llmResult = null;
-  try {
-    if (config.provider === "gemini") {
-      llmResult = await callGemini(config.apiKey, userPrompt);
-    } else if (config.provider === "anthropic") {
-      llmResult = await callAnthropic(config.apiKey, userPrompt);
-    } else {
-      llmResult = await callOpenAI(config.apiKey, userPrompt);
-    }
-  } catch (_) {
-    return null;
-  }
+  // Call LLM via shared provider
+  const llmResult = await callLLM(root, SYSTEM_PROMPT, userPrompt, { timeout: 3000 });
 
   if (!llmResult) return null;
 

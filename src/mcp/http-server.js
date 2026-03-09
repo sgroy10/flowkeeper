@@ -44,6 +44,14 @@ import {
   OPERATORS,
   checkTypedConstraint,
   formatTypedLockText,
+  compileSpec,
+  compileAndApply,
+  buildGraph,
+  getOrBuildGraph,
+  getBlastRadius,
+  mapLocksToFiles,
+  getModules,
+  getCriticalPaths,
 } from "../core/engine.js";
 import { generateContext, generateContextPack } from "../core/context.js";
 import {
@@ -1394,6 +1402,112 @@ app.get("/api/v2/status", (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });
+  }
+});
+
+// ========================================
+// SPEC COMPILER ENDPOINTS (v5.0)
+// ========================================
+
+app.post("/api/v2/compiler/compile", async (req, res) => {
+  setCorsHeaders(res);
+  if (!checkAuth(req, res)) return;
+  if (!checkRateLimit(req, res)) return;
+
+  try {
+    ensureInit(PROJECT_ROOT);
+    const { text, autoApply } = req.body || {};
+    if (!text || typeof text !== "string") {
+      return res.status(400).json({ error: "Missing or invalid 'text' field", api_version: "v2" });
+    }
+
+    const result = autoApply
+      ? await compileAndApply(PROJECT_ROOT, text)
+      : await compileSpec(PROJECT_ROOT, text);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error, api_version: "v2" });
+    }
+
+    return res.json({
+      success: true,
+      locks: result.locks,
+      typedLocks: result.typedLocks,
+      decisions: result.decisions,
+      notes: result.notes,
+      summary: result.summary || "",
+      applied: result.applied || null,
+      totalApplied: result.totalApplied || 0,
+      api_version: "v2",
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message, api_version: "v2" });
+  }
+});
+
+// ========================================
+// CODE GRAPH ENDPOINTS (v5.0)
+// ========================================
+
+app.get("/api/v2/graph", (req, res) => {
+  setCorsHeaders(res);
+  if (!checkAuth(req, res)) return;
+
+  try {
+    ensureInit(PROJECT_ROOT);
+    const graph = getOrBuildGraph(PROJECT_ROOT);
+    return res.json({ ...graph, api_version: "v2" });
+  } catch (err) {
+    return res.status(500).json({ error: err.message, api_version: "v2" });
+  }
+});
+
+app.post("/api/v2/graph/build", (req, res) => {
+  setCorsHeaders(res);
+  if (!checkAuth(req, res)) return;
+
+  try {
+    ensureInit(PROJECT_ROOT);
+    const graph = buildGraph(PROJECT_ROOT, { force: true });
+    return res.json({
+      success: true,
+      stats: graph.stats,
+      builtAt: graph.builtAt,
+      api_version: "v2",
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message, api_version: "v2" });
+  }
+});
+
+app.get("/api/v2/graph/blast-radius", (req, res) => {
+  setCorsHeaders(res);
+  if (!checkAuth(req, res)) return;
+
+  try {
+    ensureInit(PROJECT_ROOT);
+    const file = req.query?.file;
+    if (!file) {
+      return res.status(400).json({ error: "Missing 'file' query parameter", api_version: "v2" });
+    }
+
+    const result = getBlastRadius(PROJECT_ROOT, file);
+    return res.json({ ...result, api_version: "v2" });
+  } catch (err) {
+    return res.status(500).json({ error: err.message, api_version: "v2" });
+  }
+});
+
+app.get("/api/v2/graph/lock-map", (req, res) => {
+  setCorsHeaders(res);
+  if (!checkAuth(req, res)) return;
+
+  try {
+    ensureInit(PROJECT_ROOT);
+    const mappings = mapLocksToFiles(PROJECT_ROOT);
+    return res.json({ mappings, count: mappings.length, api_version: "v2" });
+  } catch (err) {
+    return res.status(500).json({ error: err.message, api_version: "v2" });
   }
 });
 
