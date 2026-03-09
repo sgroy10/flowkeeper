@@ -639,8 +639,14 @@ export {
   getCriticalPaths,
 } from "./code-graph.js";
 
-// --- Patch Gateway (v5.1) ---
+// --- Patch Gateway (v5.1) + Diff-Native Review (v5.2) ---
 export {
   reviewPatch,
   reviewPatchAsync,
+  reviewPatchDiff,
+  reviewPatchDiffAsync,
+  reviewPatchUnified,
 } from "./patch-gateway.js";
+
+// --- Diff Parser (v5.2) ---
+export { parseDiff as parseUnifiedDiff } from "./diff-parser.js";

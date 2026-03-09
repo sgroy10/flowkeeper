@@ -54,6 +54,10 @@ import {
   getCriticalPaths,
   reviewPatch,
   reviewPatchAsync,
+  reviewPatchDiff,
+  reviewPatchDiffAsync,
+  reviewPatchUnified,
+  parseUnifiedDiff,
 } from "../core/engine.js";
 import { generateContext, generateContextPack } from "../core/context.js";
 import {
@@ -109,7 +113,7 @@ import { fileURLToPath } from "url";
 import _path from "path";
 
 const PROJECT_ROOT = process.env.SPECLOCK_PROJECT_ROOT || process.cwd();
-const VERSION = "5.1.0";
+const VERSION = "5.2.0";
 const AUTHOR = "Sandeep Roy";
 const START_TIME = Date.now();
 
@@ -883,7 +887,7 @@ app.get("/health", (req, res) => {
     status: "healthy",
     version: VERSION,
     uptime: Math.floor((Date.now() - START_TIME) / 1000),
-    tools: 40,
+    tools: 42,
     auditChain: auditStatus,
     authEnabled: isAuthEnabled(PROJECT_ROOT),
     rateLimit: { limit: RATE_LIMIT, windowMs: RATE_WINDOW_MS },
@@ -897,8 +901,8 @@ app.get("/", (req, res) => {
     name: "speclock",
     version: VERSION,
     author: AUTHOR,
-    description: "AI Constraint Engine for autonomous systems governance. Spec Compiler (NL→constraints), Code Graph (blast radius, lock-to-file mapping), Typed constraints (numerical, range, state, temporal), REST API v2 with batch checking & SSE streaming. Python SDK + ROS2 integration. Policy-as-Code, RBAC, AES-256-GCM encryption, hard enforcement, HMAC audit chain, SOC 2/HIPAA compliance. 40 MCP tools. 940 tests, 99.4% accuracy.",
-    tools: 40,
+    description: "AI Constraint Engine for autonomous systems governance. Spec Compiler (NL→constraints), Code Graph (blast radius, lock-to-file mapping), Typed constraints (numerical, range, state, temporal), REST API v2 with batch checking & SSE streaming. Python SDK + ROS2 integration. Policy-as-Code, RBAC, AES-256-GCM encryption, hard enforcement, HMAC audit chain, SOC 2/HIPAA compliance. 42 MCP tools. 940 tests, 99.4% accuracy.",
+    tools: 42,
     mcp_endpoint: "/mcp",
     health_endpoint: "/health",
     npm: "https://www.npmjs.com/package/speclock",
@@ -912,7 +916,7 @@ app.get("/.well-known/mcp/server-card.json", (req, res) => {
   res.json({
     name: "SpecLock",
     version: VERSION,
-    description: "AI Constraint Engine for autonomous systems governance. Spec Compiler (NL→constraints via Gemini Flash), Code Graph (dependency parsing, blast radius, lock-to-file mapping), Typed constraints (numerical, range, state, temporal), REST API v2, Python SDK + ROS2 Guardian Node. Hybrid heuristic + Gemini LLM. Policy-as-Code, RBAC, AES-256-GCM encryption, hard enforcement, HMAC audit chain, SOC 2/HIPAA compliance. 40 MCP tools. 940 tests, 99.4% accuracy. Works with Claude Code, Cursor, Windsurf, Cline, Bolt.new, Lovable.",
+    description: "AI Constraint Engine for autonomous systems governance. Spec Compiler (NL→constraints via Gemini Flash), Code Graph (dependency parsing, blast radius, lock-to-file mapping), Typed constraints (numerical, range, state, temporal), REST API v2, Python SDK + ROS2 Guardian Node. Hybrid heuristic + Gemini LLM. Policy-as-Code, RBAC, AES-256-GCM encryption, hard enforcement, HMAC audit chain, SOC 2/HIPAA compliance. 42 MCP tools. 940 tests, 99.4% accuracy. Works with Claude Code, Cursor, Windsurf, Cline, Bolt.new, Lovable.",
     author: {
       name: "Sandeep Roy",
       url: "https://github.com/sgroy10",
@@ -921,7 +925,7 @@ app.get("/.well-known/mcp/server-card.json", (req, res) => {
     homepage: "https://sgroy10.github.io/speclock/",
     license: "MIT",
     capabilities: {
-      tools: 40,
+      tools: 42,
       categories: [
         "Memory Management",
         "Change Tracking",
@@ -1536,6 +1540,51 @@ app.post("/api/v2/gateway/review", async (req, res) => {
       : reviewPatch(PROJECT_ROOT, { description, files: fileList });
 
     return res.json({ ...result, api_version: "v2" });
+  } catch (err) {
+    return res.status(500).json({ error: err.message, api_version: "v2" });
+  }
+});
+
+app.post("/api/v2/gateway/review-diff", async (req, res) => {
+  setCorsHeaders(res);
+
+  const clientIp = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
+  if (!checkRateLimit(clientIp)) {
+    return res.status(429).json({ error: "Rate limit exceeded", api_version: "v2" });
+  }
+
+  const { description, files, diff, useLLM, options } = req.body || {};
+  if (!description || typeof description !== "string") {
+    return res.status(400).json({ error: "Missing 'description' field", api_version: "v2" });
+  }
+  if (!diff || typeof diff !== "string") {
+    return res.status(400).json({ error: "Missing 'diff' field (provide git diff output)", api_version: "v2" });
+  }
+
+  try {
+    ensureInit(PROJECT_ROOT);
+    const fileList = Array.isArray(files) ? files : [];
+    const result = useLLM
+      ? await reviewPatchDiffAsync(PROJECT_ROOT, { description, files: fileList, diff, options })
+      : reviewPatchUnified(PROJECT_ROOT, { description, files: fileList, diff, options });
+
+    return res.json({ ...result, api_version: "v2" });
+  } catch (err) {
+    return res.status(500).json({ error: err.message, api_version: "v2" });
+  }
+});
+
+app.post("/api/v2/gateway/parse-diff", (req, res) => {
+  setCorsHeaders(res);
+
+  const { diff } = req.body || {};
+  if (!diff || typeof diff !== "string") {
+    return res.status(400).json({ error: "Missing 'diff' field", api_version: "v2" });
+  }
+
+  try {
+    const parsed = parseUnifiedDiff(diff);
+    return res.json({ ...parsed, api_version: "v2" });
   } catch (err) {
     return res.status(500).json({ error: err.message, api_version: "v2" });
   }

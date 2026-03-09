@@ -59,6 +59,10 @@ import {
   getCriticalPaths,
   reviewPatch,
   reviewPatchAsync,
+  reviewPatchDiff,
+  reviewPatchDiffAsync,
+  reviewPatchUnified,
+  parseUnifiedDiff,
 } from "../core/engine.js";
 import { generateContext, generateContextPack } from "../core/context.js";
 import {
@@ -116,7 +120,7 @@ const PROJECT_ROOT =
   args.project || process.env.SPECLOCK_PROJECT_ROOT || process.cwd();
 
 // --- MCP Server ---
-const VERSION = "5.1.0";
+const VERSION = "5.2.0";
 const AUTHOR = "Sandeep Roy";
 
 const server = new McpServer(
@@ -1779,6 +1783,115 @@ server.tool(
       content: [{ type: "text", text: lines.join("\n") }],
       isError: result.verdict === "BLOCK",
     };
+  }
+);
+
+// --- Diff-Native Patch Review (v5.2) ---
+
+server.tool(
+  "speclock_review_patch_diff",
+  "Review a code change using actual diff content (git diff output). Analyzes interface breaks, protected symbol edits, dependency drift, schema changes, and public API impact. Returns ALLOW/WARN/BLOCK with per-signal scoring. When diff is provided, runs unified review (intent + diff merged, 35/65 weight).",
+  {
+    description: z.string().describe("What the change does"),
+    files: z.array(z.string()).optional().default([]).describe("Files being changed"),
+    diff: z.string().describe("Raw unified diff (git diff output)"),
+    useLLM: z.boolean().optional().default(false).describe("Use LLM for enhanced detection"),
+    options: z.object({
+      includeSymbolAnalysis: z.boolean().optional().default(true),
+      includeDependencyAnalysis: z.boolean().optional().default(true),
+      includeSchemaAnalysis: z.boolean().optional().default(true),
+      includeApiAnalysis: z.boolean().optional().default(true),
+    }).optional().default({}),
+  },
+  async ({ description, files, diff, useLLM, options }) => {
+    const perm = requirePermission("speclock_review_patch_diff");
+    if (!perm.allowed) return { content: [{ type: "text", text: perm.error }], isError: true };
+
+    const result = useLLM
+      ? await reviewPatchDiffAsync(PROJECT_ROOT, { description, files, diff, options })
+      : reviewPatchUnified(PROJECT_ROOT, { description, files, diff, options });
+
+    if (result.verdict === "ERROR") {
+      return { content: [{ type: "text", text: result.error }], isError: true };
+    }
+
+    const lines = [
+      `Patch Review Verdict: ${result.verdict}`,
+      `Risk Score: ${result.riskScore}/100`,
+      `Review Mode: ${result.reviewMode}`,
+      `Source: ${result.source || "diff-native"}`,
+      ``,
+      result.summary,
+    ];
+
+    if (result.intentVerdict) {
+      lines.push(``, `Layer Breakdown:`, `  Intent: ${result.intentVerdict} (${result.intentRisk}/100)`, `  Diff: ${result.diffVerdict} (${result.diffRisk}/100)`);
+    }
+
+    if (result.parsedDiff) {
+      lines.push(``, `Diff Stats:`, `  Files: ${result.parsedDiff.filesChanged}`, `  Additions: +${result.parsedDiff.additions}`, `  Deletions: -${result.parsedDiff.deletions}`, `  Hunks: ${result.parsedDiff.hunks}`);
+    }
+
+    if (result.signals) {
+      const activeSignals = Object.entries(result.signals).filter(([_, s]) => s.score > 0);
+      if (activeSignals.length > 0) {
+        lines.push(``, `Active Signals:`);
+        for (const [name, sig] of activeSignals) {
+          lines.push(`  ${name}: ${sig.score} pts`);
+        }
+      }
+    }
+
+    if (result.reasons && result.reasons.length > 0) {
+      lines.push(``, `Reasons:`);
+      for (const r of result.reasons) {
+        const icon = r.severity === "critical" ? "CRITICAL" : r.severity === "high" ? "HIGH" : r.severity === "medium" ? "MEDIUM" : "LOW";
+        lines.push(`  [${icon}] ${r.type}: ${r.message} (conf: ${typeof r.confidence === "number" ? (r.confidence > 1 ? r.confidence + "%" : Math.round(r.confidence * 100) + "%") : "N/A"})`);
+      }
+    }
+
+    if (result.recommendation) {
+      lines.push(``, `Recommendation: ${result.recommendation.action}`, `  ${result.recommendation.why}`);
+    }
+
+    return {
+      content: [{ type: "text", text: lines.join("\n") }],
+      isError: result.verdict === "BLOCK",
+    };
+  }
+);
+
+server.tool(
+  "speclock_parse_diff",
+  "Parse a raw unified diff into structured changes. Shows imports added/removed, exports changed, symbols touched, route changes, and schema file detection. Useful for debugging, observability, and inspecting what SpecLock thinks changed.",
+  {
+    diff: z.string().describe("Raw unified diff (git diff output)"),
+  },
+  async ({ diff }) => {
+    const parsed = parseUnifiedDiff(diff);
+
+    const lines = [
+      `Parsed Diff:`,
+      `  Files Changed: ${parsed.stats.filesChanged}`,
+      `  Additions: +${parsed.stats.additions}`,
+      `  Deletions: -${parsed.stats.deletions}`,
+      `  Hunks: ${parsed.stats.hunks}`,
+    ];
+
+    for (const file of parsed.files) {
+      lines.push(``, `File: ${file.path} (${file.language})`);
+      lines.push(`  +${file.additions} / -${file.deletions}`);
+      if (file.importsAdded.length > 0) lines.push(`  Imports Added: ${file.importsAdded.join(", ")}`);
+      if (file.importsRemoved.length > 0) lines.push(`  Imports Removed: ${file.importsRemoved.join(", ")}`);
+      if (file.exportsAdded.length > 0) lines.push(`  Exports Added: ${file.exportsAdded.map(e => e.symbol).join(", ")}`);
+      if (file.exportsRemoved.length > 0) lines.push(`  Exports Removed: ${file.exportsRemoved.map(e => e.symbol).join(", ")}`);
+      if (file.exportsModified.length > 0) lines.push(`  Exports Modified: ${file.exportsModified.map(e => e.symbol).join(", ")}`);
+      if (file.symbolsTouched.length > 0) lines.push(`  Symbols Touched: ${file.symbolsTouched.map(s => `${s.symbol} (${s.changeType})`).join(", ")}`);
+      if (file.routeChanges.length > 0) lines.push(`  Route Changes: ${file.routeChanges.map(r => `${r.method} ${r.path} [${r.changeType}]`).join(", ")}`);
+      if (file.isSchemaFile) lines.push(`  ** Schema/Migration File **`);
+    }
+
+    return { content: [{ type: "text", text: lines.join("\n") }] };
   }
 );
 

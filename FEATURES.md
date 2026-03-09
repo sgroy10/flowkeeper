@@ -52,7 +52,7 @@ SpecLock works everywhere because it has three ways to connect:
 ### Mode 1: MCP Remote (Lovable, bolt.diy, Base44)
 ```
 Platform connects to SpecLock's hosted MCP server via URL.
-No installation needed. 40 tools available automatically.
+No installation needed. 42 tools available automatically.
 
 URL: https://speclock-mcp-production.up.railway.app/mcp
 ```
@@ -68,7 +68,7 @@ URL: https://speclock-mcp-production.up.railway.app/mcp
   }
 }
 ```
-The AI tool runs the MCP server locally. 40 tools available via MCP protocol. Claude Code follows server instructions automatically — zero config.
+The AI tool runs the MCP server locally. 42 tools available via MCP protocol. Claude Code follows server instructions automatically — zero config.
 
 ### Mode 3: npm File-Based (Bolt.new, Aider, any platform with npm)
 ```bash
@@ -84,7 +84,7 @@ This is the breakthrough — SpecLock works on platforms that don't support MCP 
 
 Not keyword matching — **real semantic analysis** with Gemini Flash LLM hybrid for universal domain coverage.
 
-**997 tests across 14 suites. 99.4% accuracy. 0 false positives across 15 domains (fintech, e-commerce, IoT, healthcare, SaaS, robotics, autonomous systems, and more).**
+**1073 tests across 15 suites. 99.4% accuracy. 0 false positives across 15 domains (fintech, e-commerce, IoT, healthcare, SaaS, robotics, autonomous systems, and more).**
 
 The engine includes:
 - **65+ synonym groups** — Maps across destructive, constructive, modification, security, medical, financial, IoT, payments, and DevOps domains
@@ -117,7 +117,7 @@ Result:  CONFLICT (HIGH — 100%) — PostgreSQL and MongoDB are both databases
 
 ---
 
-## 40 MCP Tools
+## 42 MCP Tools
 
 ### Memory Management (8 tools)
 | Tool | Purpose |
@@ -373,7 +373,7 @@ npx speclock watch                          # File watcher
 | Python SDK | 62 | 100% | pip install, constraint checking |
 | ROS2 Guardian | 26 | 100% | Robot safety enforcement |
 | Real-World Testers | 105 | 95% | Multi-domain scenarios |
-| **Total** | **940** | **99.4%** | **14 suites, 15 domains** |
+| **Total** | **940** | **99.4%** | **15 suites, 15 domains** |
 
 ---
 
@@ -387,4 +387,4 @@ npx speclock watch                          # File watcher
 
 ---
 
-*SpecLock v5.0.0 — AI Constraint Engine with Spec Compiler, Code Graph, Typed Constraints, Python SDK, ROS2 Integration, REST API v2, Semantic Conflict Detection, Gemini LLM Hybrid, 40 MCP Tools, HMAC Audit Chain, Hard Enforcement, SOC 2/HIPAA Compliance, AES-256-GCM Encryption, RBAC, Policy-as-Code. 997 tests, 99.4% accuracy, 0 false positives. Free & open source (MIT). Developed by Sandeep Roy (https://github.com/sgroy10).*
+*SpecLock v5.0.0 — AI Constraint Engine with Spec Compiler, Code Graph, Typed Constraints, Python SDK, ROS2 Integration, REST API v2, Semantic Conflict Detection, Gemini LLM Hybrid, 42 MCP Tools, HMAC Audit Chain, Hard Enforcement, SOC 2/HIPAA Compliance, AES-256-GCM Encryption, RBAC, Policy-as-Code. 1073 tests, 99.4% accuracy, 0 false positives. Free & open source (MIT). Developed by Sandeep Roy (https://github.com/sgroy10).*

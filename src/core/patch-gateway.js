@@ -344,3 +344,222 @@ function buildSummary(verdict, riskScore, reasons, files, blastDetails, lockFile
 
   return parts.join(". ") + ".";
 }
+
+// ===================================================================
+// DIFF-NATIVE REVIEW (v5.2) — Actual patch analysis
+// ===================================================================
+
+import { parseDiff } from "./diff-parser.js";
+import { analyzeDiff, calculateVerdict } from "./diff-analyzer.js";
+
+/**
+ * Review a proposed change using actual diff content.
+ * Combines diff-level signal extraction with project constraints.
+ *
+ * @param {string} root - Project root
+ * @param {object} opts
+ * @param {string} opts.description - What the change does
+ * @param {string[]} [opts.files] - Files being changed
+ * @param {string} opts.diff - Raw unified diff (git diff output)
+ * @param {object} [opts.options] - Analysis options
+ * @returns {object} Diff-native review result
+ */
+export function reviewPatchDiff(root, { description, files = [], diff, options = {} }) {
+  if (!description || typeof description !== "string" || !description.trim()) {
+    return {
+      verdict: "ERROR",
+      riskScore: 0,
+      reviewMode: "diff-native",
+      error: "description is required",
+      signals: {},
+      reasons: [],
+      summary: "No change description provided.",
+    };
+  }
+
+  if (!diff || typeof diff !== "string" || !diff.trim()) {
+    return {
+      verdict: "ERROR",
+      riskScore: 0,
+      reviewMode: "diff-native",
+      error: "diff is required (provide git diff output)",
+      signals: {},
+      reasons: [],
+      summary: "No diff content provided.",
+    };
+  }
+
+  // Parse the diff
+  const parsedDiff = parseDiff(diff);
+
+  // If files not provided, extract from parsed diff
+  if (files.length === 0 && parsedDiff.files.length > 0) {
+    files = parsedDiff.files.map(f => f.path);
+  }
+
+  // Run all signal analyzers
+  const { signals, reasons } = analyzeDiff(root, parsedDiff, description, options);
+
+  // Calculate verdict from signals
+  const { verdict, riskScore, recommendation } = calculateVerdict(signals, reasons);
+
+  // Build summary
+  const summaryParts = [`${verdict} (risk: ${riskScore}/100)`];
+  const criticalReasons = reasons.filter(r => r.severity === "critical");
+  const highReasons = reasons.filter(r => r.severity === "high");
+  if (criticalReasons.length > 0) summaryParts.push(`${criticalReasons.length} critical issue(s)`);
+  if (highReasons.length > 0) summaryParts.push(`${highReasons.length} high-severity issue(s)`);
+  if (parsedDiff.stats.filesChanged > 0) {
+    summaryParts.push(`${parsedDiff.stats.filesChanged} file(s), +${parsedDiff.stats.additions}/-${parsedDiff.stats.deletions}`);
+  }
+
+  return {
+    verdict,
+    riskScore,
+    reviewMode: "diff-native",
+    description,
+    files,
+    signals,
+    reasons,
+    parsedDiff: parsedDiff.stats,
+    recommendation,
+    summary: summaryParts.join(". ") + ".",
+    api_version: "v2",
+  };
+}
+
+/**
+ * Async diff review — adds LLM conflict checking for ambiguous cases.
+ */
+export async function reviewPatchDiffAsync(root, opts) {
+  const result = reviewPatchDiff(root, opts);
+
+  if (result.verdict === "ERROR" || result.verdict === "BLOCK") {
+    result.source = result.verdict === "BLOCK" ? "diff-native" : "error";
+    return result;
+  }
+
+  // For WARN / ALLOW, try LLM enhancement
+  try {
+    const { llmCheckConflict } = await import("./llm-checker.js");
+    const brain = readBrain(root);
+    const activeLocks = (brain?.specLock?.items || []).filter(l => l.active !== false && !l.constraintType);
+
+    if (activeLocks.length > 0) {
+      const llmResult = await llmCheckConflict(root, opts.description, activeLocks);
+      if (llmResult && llmResult.hasConflict) {
+        for (const lc of (llmResult.conflictingLocks || [])) {
+          const confidence = (lc.confidence || 50) / 100;
+          result.signals.llmConflict.used = true;
+          result.signals.llmConflict.score = Math.min(CAPS_LLM, Math.round(confidence * 10));
+          result.reasons.push({
+            type: "llm_conflict",
+            severity: confidence >= 0.7 ? "critical" : "high",
+            confidence,
+            message: `LLM detected conflict with: "${lc.text}"`,
+            details: { lockId: lc.id, lockText: lc.text },
+          });
+        }
+        // Recalculate verdict
+        const recalc = calculateVerdict(result.signals, result.reasons);
+        result.verdict = recalc.verdict;
+        result.riskScore = recalc.riskScore;
+        result.recommendation = recalc.recommendation;
+      }
+    }
+    result.source = "diff-native+llm";
+  } catch (_) {
+    result.source = "diff-native";
+  }
+
+  return result;
+}
+
+const CAPS_LLM = 10;
+
+/**
+ * Unified review — runs both intent review (v5.1) and diff review (v5.2),
+ * then merges results. Takes the stronger verdict.
+ *
+ * @param {string} root - Project root
+ * @param {object} opts - Same as reviewPatchDiff but diff is optional
+ * @returns {object} Unified review result
+ */
+export function reviewPatchUnified(root, opts) {
+  const hasDiff = opts.diff && typeof opts.diff === "string" && opts.diff.trim();
+
+  // Always run intent review (v5.1)
+  const intentResult = reviewPatch(root, {
+    description: opts.description,
+    files: opts.files || [],
+    includeGraph: true,
+  });
+
+  if (!hasDiff) {
+    // No diff available — return intent review only
+    return {
+      ...intentResult,
+      reviewMode: "intent-only",
+      source: "v5.1-intent",
+    };
+  }
+
+  // Run diff review (v5.2)
+  const diffResult = reviewPatchDiff(root, opts);
+
+  if (diffResult.verdict === "ERROR") {
+    // Diff parsing failed — fallback to intent only
+    return {
+      ...intentResult,
+      reviewMode: "intent-only",
+      source: "v5.1-intent (diff parse failed)",
+    };
+  }
+
+  // Merge results — weighted: intent 35%, diff 65%
+  const intentWeight = 0.35;
+  const diffWeight = 0.65;
+  const mergedRisk = Math.min(100, Math.round(
+    intentResult.riskScore * intentWeight + diffResult.riskScore * diffWeight
+  ));
+
+  // Take stronger verdict
+  const verdictRank = { ALLOW: 0, WARN: 1, BLOCK: 2 };
+  const finalVerdict = verdictRank[diffResult.verdict] >= verdictRank[intentResult.verdict]
+    ? diffResult.verdict
+    : intentResult.verdict;
+
+  // Merge reasons (deduplicate by type+lockId)
+  const mergedReasons = [...diffResult.reasons];
+  for (const ir of intentResult.reasons) {
+    const exists = mergedReasons.find(r =>
+      r.type === ir.type && r.details?.lockId === ir.lockId
+    );
+    if (!exists) {
+      mergedReasons.push({
+        ...ir,
+        confidence: typeof ir.confidence === "number" && ir.confidence > 1
+          ? ir.confidence / 100 : ir.confidence,
+      });
+    }
+  }
+
+  return {
+    verdict: finalVerdict,
+    riskScore: mergedRisk,
+    reviewMode: "unified",
+    description: opts.description,
+    files: diffResult.files,
+    signals: diffResult.signals,
+    reasons: mergedReasons,
+    parsedDiff: diffResult.parsedDiff,
+    blastRadius: intentResult.blastRadius,
+    recommendation: diffResult.recommendation,
+    summary: `${finalVerdict} (risk: ${mergedRisk}/100). Intent: ${intentResult.verdict}(${intentResult.riskScore}). Diff: ${diffResult.verdict}(${diffResult.riskScore}).`,
+    intentVerdict: intentResult.verdict,
+    intentRisk: intentResult.riskScore,
+    diffVerdict: diffResult.verdict,
+    diffRisk: diffResult.riskScore,
+    api_version: "v2",
+  };
+}

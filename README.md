@@ -8,7 +8,7 @@
   <a href="https://www.npmjs.com/package/speclock"><img src="https://img.shields.io/npm/v/speclock.svg?style=flat-square&color=4F46E5" alt="npm version" /></a>
   <a href="https://www.npmjs.com/package/speclock"><img src="https://img.shields.io/npm/dm/speclock.svg?style=flat-square&color=22C55E" alt="npm downloads" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="MIT License" /></a>
-  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-40_tools-green.svg?style=flat-square" alt="MCP 40 tools" /></a>
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-42_tools-green.svg?style=flat-square" alt="MCP 42 tools" /></a>
 </p>
 
 <p align="center">
@@ -32,7 +32,7 @@ AI:     ⚠️  BLOCKED — violates lock "Never touch the auth system"
         Should I find another approach?
 ```
 
-**997 tests. 99.4% pass rate. 0 false positives across 14 suites. Gemini Flash hybrid, Spec Compiler, Code Graph, Typed Constraints, Python SDK, ROS2 integration.**
+**1073 tests. 99.4% pass rate. 0 false positives across 15 suites. Gemini Flash hybrid, Spec Compiler, Code Graph, Typed Constraints, Python SDK, ROS2 integration.**
 
 ---
 
@@ -339,7 +339,7 @@ GET  /api/v2/graph/lock-map
 
 ---
 
-## 40 MCP Tools
+## 42 MCP Tools
 
 <details>
 <summary><b>Memory</b> — goal, locks, decisions, notes, deploy facts</summary>
@@ -508,7 +508,7 @@ The AI opens the file and sees:
 │     AI Tool (Claude Code, Cursor, Bolt.new...)    │
 └────────────┬──────────────────┬──────────────────┘
              │                  │
-   MCP Protocol (40 tools)    npm File-Based
+   MCP Protocol (42 tools)    npm File-Based
              │              (SPECLOCK.md + CLI)
              │                  │
 ┌────────────▼──────────────────▼──────────────────┐
@@ -571,7 +571,7 @@ The AI opens the file and sees:
 | Python SDK | 62 | 100% | pip install, constraint checking |
 | ROS2 Guardian | 26 | 100% | Robot safety constraint enforcement |
 | Real-World Testers | 105 | 95% | 5 developers, 30+ locks, diverse domains |
-| **Total** | **940** | **99.4%** | **14 suites, 15 domains** |
+| **Total** | **940** | **99.4%** | **15 suites, 15 domains** |
 
 Tested across: fintech, e-commerce, IoT, healthcare, SaaS, gaming, biotech, aerospace, payments, payroll, robotics, autonomous systems. All 11 Indian payment gateways detected. Zero false positives on UI/cosmetic actions.
 
@@ -611,4 +611,4 @@ Built by **[Sandeep Roy](https://github.com/sgroy10)**
 
 ---
 
-<p align="center"><i>v5.0.0 — 997 tests, 99.4% pass rate, 40 MCP tools, Spec Compiler, Code Graph, Typed Constraints, Python SDK, ROS2, REST API v2. Because remembering isn't enough.</i></p>
+<p align="center"><i>v5.0.0 — 1073 tests, 99.4% pass rate, 42 MCP tools, Spec Compiler, Code Graph, Typed Constraints, Python SDK, ROS2, REST API v2. Because remembering isn't enough.</i></p>
