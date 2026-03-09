@@ -14,7 +14,7 @@ import { analyzeConflict } from "./semantics.js";
 // --- Signal score caps (from ChatGPT spec) ---
 
 const CAPS = {
-  semanticConflict: 20,
+  semanticConflict: 45,
   lockFileOverlap: 20,
   blastRadius: 15,
   typedConstraintRelevance: 10,
@@ -512,6 +512,17 @@ export function calculateVerdict(signals, reasons) {
   if (highConfCritical.length >= 2) {
     hardBlock = true;
     hardBlockReason = "Multiple critical issues with high confidence.";
+  }
+
+  // Semantic conflict at HIGH confidence (>=0.7) should hard-block
+  // even if other signals are absent — the engine is certain this
+  // action violates a lock.
+  const highConfSemantic = reasons.filter(r =>
+    r.type === "semantic_conflict" && (r.confidence || 0) >= 0.7
+  );
+  if (highConfSemantic.length > 0) {
+    hardBlock = true;
+    hardBlockReason = `High-confidence semantic conflict: ${highConfSemantic[0].message || "action violates active lock"}.`;
   }
 
   // --- Determine verdict ---

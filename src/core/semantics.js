@@ -272,6 +272,10 @@ export const EUPHEMISM_MAP = {
   "reconcile":      ["modify", "adjust", "change", "alter"],
   "reverse":        ["undo", "revert", "modify", "change"],
   "recalculate":    ["modify", "change", "update", "alter"],
+  "recompute":      ["modify", "change", "recalculate", "alter"],
+  "reprocess":      ["override", "modify", "recalculate", "delete", "redo"],
+  "round up":       ["modify", "tamper", "falsify", "alter", "inflate"],
+  "round down":     ["modify", "tamper", "falsify", "alter", "deflate"],
   "backdate":       ["modify", "tamper", "falsify", "change"],
   "rebalance":      ["modify", "adjust", "change", "redistribute"],
   "reclassify":     ["modify", "change", "recategorize"],
@@ -319,7 +323,7 @@ export const EUPHEMISM_MAP = {
   "bridge":         ["connect", "link", "merge", "join"],
   "segment":        ["split", "separate", "isolate", "divide"],
   "flatten":        ["merge", "simplify", "restructure"],
-  "consolidate":    ["merge", "combine", "reduce"],
+  "consolidate":    ["merge", "combine", "reduce", "delete", "expose"],
   "spin up":        ["create", "deploy", "start"],
   "spin down":      ["delete", "remove", "stop"],
   "tear down":      ["delete", "remove", "destroy"],
@@ -348,6 +352,23 @@ export const EUPHEMISM_MAP = {
   "exfiltrate":     ["extract", "steal", "expose", "leak"],
   "scrape":         ["extract", "collect", "harvest"],
   "harvest":        ["collect", "extract", "scrape"],
+
+  // Verification/compliance bypass euphemisms
+  "skip check":     ["bypass", "disable", "remove"],
+  "skip verification": ["bypass", "disable", "remove"],
+  "streamline verification": ["bypass", "weaken", "remove", "skip"],
+  "streamline application":  ["bypass", "skip", "remove"],
+  "streamline detection":    ["weaken", "disable", "bypass"],
+  "for research purposes": ["excuse", "bypass", "unauthorized"],
+  "in dev":         ["excuse", "bypass"],
+  "mock change":    ["bypass", "modify", "test excuse"],
+
+  // Record manipulation/destruction euphemisms
+  "clean up records":   ["delete", "remove", "destroy"],
+  "clean up old":       ["delete", "remove", "purge"],
+  "archive and delete": ["delete", "remove", "destroy"],
+  "refresh timestamps": ["falsify", "tamper", "modify"],
+  "refresh inspection": ["falsify", "tamper", "modify"],
 
   // Encryption euphemisms
   "unencrypted":    ["without encryption", "disable encryption", "no encryption", "plaintext"],
@@ -689,6 +710,45 @@ export const CONCEPT_MAP = {
   "k8s":               ["kubernetes", "cluster", "infrastructure",
                         "container orchestration"],
   "cluster":           ["kubernetes", "k8s", "infrastructure", "nodes"],
+
+  // Education / student records
+  "gpa":               ["grades", "grade point", "academic record", "transcript"],
+  "grades":            ["gpa", "academic record", "transcript", "marks", "scores"],
+  "transcript":        ["grades", "gpa", "academic record", "student record"],
+  "financial aid":     ["student loans", "scholarships", "grants", "student data", "student records"],
+  "student records":   ["grades", "transcript", "enrollment", "academic data"],
+  "weighted averages": ["grades", "gpa", "academic calculation"],
+
+  // Government / benefits
+  "voter rolls":       ["voter registration", "election records", "voter data"],
+  "citizen database":  ["pii", "personal data", "government records", "citizen data"],
+  "benefit applications": ["claims", "welfare", "government benefits"],
+  "denied applications":  ["rejected claims", "denied benefits", "denied requests"],
+
+  // Insurance / claims
+  "claims":            ["insurance claims", "benefit claims", "applications"],
+  "denied claims":     ["rejected claims", "denied applications"],
+  "cancelled applications": ["denied claims", "rejected applications", "voided applications"],
+
+  // Aerospace / aviation safety
+  "inspection records": ["safety records", "maintenance records", "compliance records"],
+  "discrepancy reports": ["safety reports", "incident reports", "audit findings"],
+  "black box":         ["flight recorder", "flight data", "telemetry data", "safety data"],
+  "inspection timestamps": ["safety records", "maintenance dates", "compliance dates"],
+
+  // Gaming / virtual economy
+  "virtual currency":  ["in-game currency", "game tokens", "game economy"],
+  "player data":       ["user data", "gamer data", "player records", "pii"],
+  "player ips":        ["ip addresses", "pii", "player data", "network data"],
+  "cheat detection":   ["anti-cheat", "cheat prevention", "security", "game integrity"],
+
+  // Real estate / tenant screening
+  "background check":  ["tenant screening", "verification", "due diligence"],
+  "tenant screening":  ["background check", "credit check", "verification"],
+
+  // Telecom / billing
+  "call records":      ["cdr", "call data", "telecom records", "billing records"],
+  "subscriber data":   ["customer data", "user data", "telecom records"],
 };
 
 // ===================================================================
@@ -780,7 +840,9 @@ const NEGATIVE_INTENT_MARKERS = [
   "clean up", "sunset", "retire", "phase out",
   "decommission", "wind down", "take down",
   "take offline", "pull the plug",
-  "streamline",
+  "streamline", "consolidate",
+  "round up", "round down", "reprocess", "recompute",
+  "falsify", "tamper",
 ].sort((a, b) => b.length - a.length);
 
 // ===================================================================
@@ -1892,15 +1954,50 @@ export function scoreConflict({ actionText, lockText }) {
       rawWordOverlap &&
       euphemismMatches.some(m => m.includes(`euphemism for ${_prohibVerb}`));
 
-    if (!euphemismMatchesProhibitedVerb) {
+    // NEW: Check if euphemism maps to lock's prohibited verb even without
+    // word overlap. Cross-domain attacks like "truncate audit_log" vs
+    // "Never delete student records" have no shared nouns but the euphemism
+    // still proves destructive intent matching the lock's prohibition.
+    const _DESTRUCTIVE_VERBS = new Set([
+      "delete", "remove", "destroy", "wipe", "purge", "erase",
+      "disable", "bypass", "expose", "tamper", "falsify",
+      "override", "leak", "steal", "skip", "weaken",
+    ]);
+    const euphemismMatchesDestructiveProhibition = !euphemismMatchesProhibitedVerb &&
+      _prohibVerb && _DESTRUCTIVE_VERBS.has(_prohibVerb) &&
+      euphemismMatches.some(m => m.includes(`euphemism for ${_prohibVerb}`));
+
+    if (euphemismMatchesProhibitedVerb) {
+      // Full bypass — euphemism matches prohibited verb AND has content overlap
+      // No reduction applied (existing behavior)
+    } else if (euphemismMatchesDestructiveProhibition) {
+      // Euphemism maps to destructive prohibited verb but no subject overlap
+      // Apply moderate reduction (not 0.15) — still suspicious enough to flag
+      score = Math.floor(score * 0.50);
+      reasons.push("scope gate softened: euphemism matches destructive prohibition without subject overlap");
+    } else {
       // NO subject match at all — verb-only match → heavy reduction
       score = Math.floor(score * 0.15);
       reasons.push("subject gate: no subject overlap — verb-only match, likely false positive");
     }
   } else if (hasVocabSubjectMatch && !hasScopeMatch && subjectComparison.lockSubjects.length > 0 && subjectComparison.actionSubjects.length > 0) {
     // Vocabulary overlap exists but subjects point to DIFFERENT scopes
-    score = Math.floor(score * 0.35);
-    reasons.push(`scope gate: shared vocabulary but different scope — lock targets "${subjectComparison.lockSubjects[0]}", action targets "${subjectComparison.actionSubjects[0]}"`);
+    // If euphemism maps to a destructive verb, soften the gate
+    const _prohibVerb2 = extractProhibitedVerb(lockText);
+    const _DESTRUCTIVE_VERBS2 = new Set([
+      "delete", "remove", "destroy", "wipe", "purge", "erase",
+      "disable", "bypass", "expose", "tamper", "falsify",
+      "override", "leak", "steal", "skip", "weaken",
+    ]);
+    const hasDestructiveEuphemism = _prohibVerb2 && _DESTRUCTIVE_VERBS2.has(_prohibVerb2) &&
+      euphemismMatches.some(m => m.includes(`euphemism for ${_prohibVerb2}`));
+    if (hasDestructiveEuphemism) {
+      score = Math.floor(score * 0.55);
+      reasons.push(`scope gate softened: destructive euphemism with different scope — lock targets "${subjectComparison.lockSubjects[0]}", action targets "${subjectComparison.actionSubjects[0]}"`);
+    } else {
+      score = Math.floor(score * 0.35);
+      reasons.push(`scope gate: shared vocabulary but different scope — lock targets "${subjectComparison.lockSubjects[0]}", action targets "${subjectComparison.actionSubjects[0]}"`);
+    }
   }
 
   const prohibitedVerb = extractProhibitedVerb(lockText);
