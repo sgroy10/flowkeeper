@@ -638,3 +638,9 @@ export {
   getModules,
   getCriticalPaths,
 } from "./code-graph.js";
+
+// --- Patch Gateway (v5.1) ---
+export {
+  reviewPatch,
+  reviewPatchAsync,
+} from "./patch-gateway.js";

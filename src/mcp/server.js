@@ -57,6 +57,8 @@ import {
   mapLocksToFiles,
   getModules,
   getCriticalPaths,
+  reviewPatch,
+  reviewPatchAsync,
 } from "../core/engine.js";
 import { generateContext, generateContextPack } from "../core/context.js";
 import {
@@ -114,7 +116,7 @@ const PROJECT_ROOT =
   args.project || process.env.SPECLOCK_PROJECT_ROOT || process.cwd();
 
 // --- MCP Server ---
-const VERSION = "5.0.2";
+const VERSION = "5.1.0";
 const AUTHOR = "Sandeep Roy";
 
 const server = new McpServer(
@@ -1713,6 +1715,70 @@ server.tool(
     }
 
     return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+);
+
+// --- Patch Gateway (v5.1) ---
+
+server.tool(
+  "speclock_review_patch",
+  "Review a proposed code change and get an ALLOW/WARN/BLOCK verdict. Combines semantic conflict detection, lock-to-file mapping, blast radius analysis, and typed constraint awareness into a single risk assessment. The patch-time decision engine that gates every change.",
+  {
+    description: z.string().describe("What the change does (e.g. 'Add social login to auth page')"),
+    files: z.array(z.string()).optional().default([]).describe("Files being changed (project-relative paths, e.g. ['src/auth/login.js'])"),
+    useLLM: z.boolean().optional().default(false).describe("If true, uses LLM for enhanced conflict detection on ambiguous cases"),
+  },
+  async ({ description, files, useLLM }) => {
+    const perm = requirePermission("speclock_review_patch");
+    if (!perm.allowed) return { content: [{ type: "text", text: perm.error }], isError: true };
+
+    const result = useLLM
+      ? await reviewPatchAsync(PROJECT_ROOT, { description, files })
+      : reviewPatch(PROJECT_ROOT, { description, files });
+
+    if (result.verdict === "ERROR") {
+      return { content: [{ type: "text", text: result.error }], isError: true };
+    }
+
+    const lines = [
+      `Patch Gateway Verdict: ${result.verdict}`,
+      `Risk Score: ${result.riskScore}/100`,
+      `Source: ${result.source || "heuristic"}`,
+      `Active Locks: ${result.lockCount}`,
+      `Files Reviewed: ${result.fileCount}`,
+      ``,
+      result.summary,
+    ];
+
+    if (result.reasons.length > 0) {
+      lines.push(``, `Reasons:`);
+      for (const r of result.reasons) {
+        const icon = r.severity === "block" ? "BLOCK" : r.severity === "warn" ? "WARN" : "INFO";
+        lines.push(`  [${icon}] ${r.type}: "${r.lockText || r.details?.[0] || ""}" (confidence: ${r.confidence}%)`);
+        if (r.details && r.details.length > 0) {
+          r.details.forEach(d => lines.push(`    - ${d}`));
+        }
+      }
+    }
+
+    if (result.blastRadius) {
+      lines.push(``, `Blast Radius:`);
+      for (const b of result.blastRadius.files) {
+        lines.push(`  ${b.file}: ${b.transitiveDependents} dependents (${b.impactPercent.toFixed(1)}% impact)`);
+      }
+    }
+
+    if (result.lockFileOverlaps) {
+      lines.push(``, `Lock-File Overlaps:`);
+      for (const o of result.lockFileOverlaps) {
+        lines.push(`  Lock: "${o.lockText}" → Files: ${o.overlappingFiles.join(", ")}`);
+      }
+    }
+
+    return {
+      content: [{ type: "text", text: lines.join("\n") }],
+      isError: result.verdict === "BLOCK",
+    };
   }
 );
 
