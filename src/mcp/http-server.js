@@ -1411,8 +1411,10 @@ app.get("/api/v2/status", (req, res) => {
 
 app.post("/api/v2/compiler/compile", async (req, res) => {
   setCorsHeaders(res);
-  if (!checkAuth(req, res)) return;
-  if (!checkRateLimit(req, res)) return;
+  const clientIp = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
+  if (!checkRateLimit(clientIp)) {
+    return res.status(429).json({ error: "Rate limit exceeded", api_version: "v2" });
+  }
 
   try {
     ensureInit(PROJECT_ROOT);
@@ -1451,7 +1453,6 @@ app.post("/api/v2/compiler/compile", async (req, res) => {
 
 app.get("/api/v2/graph", (req, res) => {
   setCorsHeaders(res);
-  if (!checkAuth(req, res)) return;
 
   try {
     ensureInit(PROJECT_ROOT);
@@ -1464,7 +1465,6 @@ app.get("/api/v2/graph", (req, res) => {
 
 app.post("/api/v2/graph/build", (req, res) => {
   setCorsHeaders(res);
-  if (!checkAuth(req, res)) return;
 
   try {
     ensureInit(PROJECT_ROOT);
@@ -1482,7 +1482,6 @@ app.post("/api/v2/graph/build", (req, res) => {
 
 app.get("/api/v2/graph/blast-radius", (req, res) => {
   setCorsHeaders(res);
-  if (!checkAuth(req, res)) return;
 
   try {
     ensureInit(PROJECT_ROOT);
@@ -1500,7 +1499,6 @@ app.get("/api/v2/graph/blast-radius", (req, res) => {
 
 app.get("/api/v2/graph/lock-map", (req, res) => {
   setCorsHeaders(res);
-  if (!checkAuth(req, res)) return;
 
   try {
     ensureInit(PROJECT_ROOT);
