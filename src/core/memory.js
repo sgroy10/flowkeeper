@@ -22,6 +22,7 @@ import {
 import { hasGit, getHead, getDefaultBranch } from "./git.js";
 import { ensureAuditKeyGitignored } from "./audit.js";
 import { normalizeLock } from "./lock-author.js";
+import { validateTypedLock, formatTypedLockText } from "./typed-constraints.js";
 
 // --- Internal helpers ---
 
@@ -171,6 +172,120 @@ export function addNote(root, text, pinned = true) {
   };
   recordEvent(root, brain, event);
   return { brain, noteId };
+}
+
+/**
+ * Add a typed constraint lock (numerical, range, state, temporal).
+ * These are for autonomous systems governance — real-time value/state checking.
+ * Existing text locks use addLock() and are unaffected.
+ *
+ * @param {string} root - Project root
+ * @param {Object} constraint - Typed constraint definition:
+ *   { constraintType, metric?, operator?, value?, min?, max?, entity?, forbidden?, unit?, requireApproval? }
+ * @param {string[]} tags - Category tags
+ * @param {string} source - "user" or "agent"
+ * @param {string} description - Human-readable description (optional, auto-generated if missing)
+ */
+export function addTypedLock(root, constraint, tags, source, description) {
+  const validation = validateTypedLock(constraint);
+  if (!validation.valid) {
+    return { brain: null, lockId: null, error: validation.error };
+  }
+
+  const brain = ensureInit(root);
+  const lockId = newId("lock");
+  const text = description || formatTypedLockText(constraint);
+
+  brain.specLock.items.unshift({
+    id: lockId,
+    text,
+    constraintType: constraint.constraintType,
+    // Type-specific fields
+    ...(constraint.metric && { metric: constraint.metric }),
+    ...(constraint.operator && { operator: constraint.operator }),
+    ...(constraint.value !== undefined && { value: constraint.value }),
+    ...(constraint.min !== undefined && { min: constraint.min }),
+    ...(constraint.max !== undefined && { max: constraint.max }),
+    ...(constraint.unit && { unit: constraint.unit }),
+    ...(constraint.entity && { entity: constraint.entity }),
+    ...(constraint.forbidden && { forbidden: constraint.forbidden }),
+    ...(constraint.requireApproval !== undefined && { requireApproval: constraint.requireApproval }),
+    createdAt: nowIso(),
+    source: source || "user",
+    tags: tags || [],
+    active: true,
+  });
+
+  const eventId = newId("evt");
+  const event = {
+    eventId,
+    type: "lock_added",
+    at: nowIso(),
+    files: [],
+    summary: `Typed lock added (${constraint.constraintType}): ${text.substring(0, 80)}`,
+    patchPath: "",
+  };
+  recordEvent(root, brain, event);
+  return { brain, lockId, constraintType: constraint.constraintType };
+}
+
+/**
+ * Update a typed lock's threshold value (for numerical/range/temporal).
+ * Records the change in audit trail.
+ */
+export function updateTypedLockThreshold(root, lockId, updates) {
+  const brain = ensureInit(root);
+  const lock = brain.specLock.items.find((l) => l.id === lockId);
+
+  if (!lock) {
+    return { brain: null, error: `Lock not found: ${lockId}` };
+  }
+  if (!lock.constraintType) {
+    return { brain: null, error: `Lock ${lockId} is a text lock, not a typed constraint` };
+  }
+
+  const oldValues = {};
+
+  // Update allowed fields based on constraint type
+  if (lock.constraintType === "numerical" || lock.constraintType === "temporal") {
+    if (updates.value !== undefined) {
+      oldValues.value = lock.value;
+      lock.value = updates.value;
+    }
+    if (updates.operator) {
+      oldValues.operator = lock.operator;
+      lock.operator = updates.operator;
+    }
+  } else if (lock.constraintType === "range") {
+    if (updates.min !== undefined) {
+      oldValues.min = lock.min;
+      lock.min = updates.min;
+    }
+    if (updates.max !== undefined) {
+      oldValues.max = lock.max;
+      lock.max = updates.max;
+    }
+  } else if (lock.constraintType === "state") {
+    if (updates.forbidden) {
+      oldValues.forbidden = lock.forbidden;
+      lock.forbidden = updates.forbidden;
+    }
+  }
+
+  // Regenerate text description
+  lock.text = formatTypedLockText(lock);
+
+  const eventId = newId("evt");
+  const event = {
+    eventId,
+    type: "lock_updated",
+    at: nowIso(),
+    files: [],
+    summary: `Typed lock ${lockId} threshold updated: ${JSON.stringify(oldValues)} -> ${JSON.stringify(updates)}`,
+    patchPath: "",
+  };
+  recordEvent(root, brain, event);
+  return { brain, lockId, oldValues, newValues: updates };
 }
 
 export function updateDeployFacts(root, payload) {

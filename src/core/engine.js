@@ -3,10 +3,11 @@
  * Re-exports all functionality from focused modules.
  * This file exists for backward compatibility — all imports from engine.js still work.
  *
- * Module structure (v2.5):
- * - memory.js:     Goal, lock, decision, note, deploy facts CRUD
+ * Module structure (v5.0):
+ * - memory.js:     Goal, lock, typed lock, decision, note, deploy facts CRUD
  * - tracking.js:   Change logging, file event handling
  * - conflict.js:   Conflict checking, drift detection, suggestions, audit
+ * - typed-constraints.js: Numerical, range, state, temporal constraint checking
  * - sessions.js:   Session management (briefing, start, end)
  * - enforcer.js:   Hard/advisory enforcement, overrides, escalation
  * - pre-commit-semantic.js: Semantic pre-commit analysis
@@ -22,6 +23,8 @@ export {
   ensureInit,
   setGoal,
   addLock,
+  addTypedLock,
+  updateTypedLockThreshold,
   removeLock,
   addDecision,
   addNote,
@@ -598,6 +601,16 @@ export {
   revokeSession,
   listSessions,
 } from "./sso.js";
+
+// --- Typed Constraints for Autonomous Systems (v5.0) ---
+export {
+  CONSTRAINT_TYPES,
+  OPERATORS,
+  validateTypedLock,
+  checkTypedConstraint,
+  checkAllTypedConstraints,
+  formatTypedLockText,
+} from "./typed-constraints.js";
 
 // --- Smart Lock Authoring (v4.0) ---
 export {

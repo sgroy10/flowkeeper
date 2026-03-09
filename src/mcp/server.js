@@ -43,6 +43,12 @@ import {
   isTelemetryEnabled,
   getTelemetrySummary,
   trackToolUsage,
+  addTypedLock,
+  updateTypedLockThreshold,
+  checkAllTypedConstraints,
+  CONSTRAINT_TYPES,
+  OPERATORS,
+  formatTypedLockText,
 } from "../core/engine.js";
 import { generateContext, generateContextPack } from "../core/context.js";
 import {
@@ -1331,6 +1337,216 @@ server.tool(
     }
 
     return { content: [{ type: "text", text: parts.join("\n") }] };
+  }
+);
+
+// ========================================
+// TYPED CONSTRAINTS — Autonomous Systems Governance (v5.0)
+// ========================================
+
+// Tool 32: speclock_add_typed_lock
+server.tool(
+  "speclock_add_typed_lock",
+  "Add a typed constraint lock for autonomous systems governance. Supports numerical (motor speed <= 3000 RPM), range (temperature between 20-80°C), state (forbidden transitions: EMERGENCY -> IDLE), and temporal (sensor interval <= 100ms) constraints. These are for real-time value/state checking in robotics, vehicles, trading, and medical systems.",
+  {
+    constraintType: z.enum(["numerical", "range", "state", "temporal"]).describe("Type of constraint"),
+    metric: z.string().optional().describe("Metric name (for numerical/range/temporal). E.g., 'motor_speed', 'temperature', 'sensor_interval'"),
+    operator: z.enum(["<", "<=", "==", "!=", ">=", ">"]).optional().describe("Comparison operator (for numerical/temporal)"),
+    value: z.number().optional().describe("Threshold value (for numerical/temporal)"),
+    min: z.number().optional().describe("Minimum value (for range)"),
+    max: z.number().optional().describe("Maximum value (for range)"),
+    unit: z.string().optional().describe("Unit of measurement. E.g., 'RPM', '°C', 'ms', 'km/h'"),
+    entity: z.string().optional().describe("Entity name (for state). E.g., 'robot_arm', 'vehicle', 'trading_engine'"),
+    forbidden: z.array(z.object({ from: z.string(), to: z.string() })).optional().describe("Forbidden state transitions (for state). E.g., [{ from: 'EMERGENCY', to: 'IDLE' }]"),
+    requireApproval: z.boolean().optional().describe("Whether forbidden transitions require human approval (for state)"),
+    description: z.string().optional().describe("Human-readable description (auto-generated if omitted)"),
+    tags: z.array(z.string()).optional().describe("Category tags"),
+    source: z.enum(["user", "agent"]).optional().describe("Who created this lock"),
+  },
+  async (params) => {
+    const perm = requirePermission("speclock_add_typed_lock");
+    if (!perm.allowed) return { content: [{ type: "text", text: perm.error }], isError: true };
+
+    const constraint = {
+      constraintType: params.constraintType,
+      ...(params.metric && { metric: params.metric }),
+      ...(params.operator && { operator: params.operator }),
+      ...(params.value !== undefined && { value: params.value }),
+      ...(params.min !== undefined && { min: params.min }),
+      ...(params.max !== undefined && { max: params.max }),
+      ...(params.unit && { unit: params.unit }),
+      ...(params.entity && { entity: params.entity }),
+      ...(params.forbidden && { forbidden: params.forbidden }),
+      ...(params.requireApproval !== undefined && { requireApproval: params.requireApproval }),
+    };
+
+    const result = addTypedLock(
+      PROJECT_ROOT,
+      constraint,
+      params.tags || [],
+      params.source || "user",
+      params.description
+    );
+
+    if (result.error) {
+      return { content: [{ type: "text", text: `Validation error: ${result.error}` }], isError: true };
+    }
+
+    return {
+      content: [{
+        type: "text",
+        text: `Typed lock added (${params.constraintType}):\nID: ${result.lockId}\nDescription: ${result.brain.specLock.items[0].text}\n\nThis constraint will be checked against real-time values using speclock_check_typed.`,
+      }],
+    };
+  }
+);
+
+// Tool 33: speclock_check_typed
+server.tool(
+  "speclock_check_typed",
+  "Check a proposed value or state transition against typed constraints. For numerical/range/temporal: provide metric and value. For state: provide entity, from, and to. Returns CONFLICT if the proposed value violates any typed lock.",
+  {
+    metric: z.string().optional().describe("Metric to check (matches typed locks by metric name)"),
+    entity: z.string().optional().describe("Entity to check (matches state locks by entity name)"),
+    value: z.number().optional().describe("Proposed value (for numerical/range/temporal checks)"),
+    from: z.string().optional().describe("Current state (for state transition checks)"),
+    to: z.string().optional().describe("Target state (for state transition checks)"),
+  },
+  async (params) => {
+    const perm = requirePermission("speclock_check_typed");
+    if (!perm.allowed) return { content: [{ type: "text", text: perm.error }], isError: true };
+
+    const brain = ensureInit(PROJECT_ROOT);
+    const allLocks = brain.specLock?.items || [];
+
+    const proposed = {
+      ...(params.metric && { metric: params.metric }),
+      ...(params.entity && { entity: params.entity }),
+      ...(params.value !== undefined && { value: params.value }),
+      ...(params.from && { from: params.from }),
+      ...(params.to && { to: params.to }),
+    };
+
+    const result = checkAllTypedConstraints(allLocks, proposed);
+
+    if (result.hasConflict) {
+      // Check enforcement mode
+      const enforcement = getEnforcementConfig(PROJECT_ROOT);
+      const isHardMode = enforcement.mode === "hard";
+      const topConfidence = result.conflictingLocks[0]?.confidence || 0;
+
+      const text = [
+        `CONSTRAINT VIOLATION DETECTED`,
+        ``,
+        result.analysis,
+        ``,
+        isHardMode && topConfidence >= enforcement.blockThreshold
+          ? `BLOCKED — Hard enforcement mode active. This action cannot proceed.`
+          : `Advisory — Review these violations before proceeding.`,
+      ].join("\n");
+
+      return {
+        content: [{ type: "text", text }],
+        isError: isHardMode && topConfidence >= enforcement.blockThreshold,
+      };
+    }
+
+    return {
+      content: [{ type: "text", text: result.analysis }],
+    };
+  }
+);
+
+// Tool 34: speclock_list_typed_locks
+server.tool(
+  "speclock_list_typed_locks",
+  "List all typed constraints (numerical, range, state, temporal) with their current thresholds and parameters. Shows constraints used for autonomous systems governance.",
+  {},
+  async () => {
+    const perm = requirePermission("speclock_list_typed_locks");
+    if (!perm.allowed) return { content: [{ type: "text", text: perm.error }], isError: true };
+
+    const brain = ensureInit(PROJECT_ROOT);
+    const allLocks = brain.specLock?.items || [];
+    const typedLocks = allLocks.filter(l => l.active !== false && l.constraintType);
+
+    if (typedLocks.length === 0) {
+      return {
+        content: [{
+          type: "text",
+          text: `No typed constraints found. Use speclock_add_typed_lock to add numerical, range, state, or temporal constraints.\n\nTotal text locks: ${allLocks.filter(l => l.active !== false && !l.constraintType).length}`,
+        }],
+      };
+    }
+
+    const sections = {
+      numerical: [],
+      range: [],
+      state: [],
+      temporal: [],
+    };
+
+    for (const lock of typedLocks) {
+      sections[lock.constraintType]?.push(lock);
+    }
+
+    const parts = [`## Typed Constraints (${typedLocks.length} total)`, ``];
+
+    for (const [type, locks] of Object.entries(sections)) {
+      if (locks.length === 0) continue;
+      parts.push(`### ${type.charAt(0).toUpperCase() + type.slice(1)} (${locks.length})`);
+      for (const l of locks) {
+        parts.push(`- **${l.id}**: ${l.text}`);
+        if (l.metric) parts.push(`  Metric: ${l.metric}`);
+        if (l.entity) parts.push(`  Entity: ${l.entity}`);
+        if (l.unit) parts.push(`  Unit: ${l.unit}`);
+        if (l.tags?.length) parts.push(`  Tags: ${l.tags.join(", ")}`);
+      }
+      parts.push(``);
+    }
+
+    const textLockCount = allLocks.filter(l => l.active !== false && !l.constraintType).length;
+    parts.push(`---`, `Text locks (semantic): ${textLockCount}`);
+
+    return { content: [{ type: "text", text: parts.join("\n") }] };
+  }
+);
+
+// Tool 35: speclock_update_threshold
+server.tool(
+  "speclock_update_threshold",
+  "Update a typed lock's threshold value. For numerical/temporal: update value and/or operator. For range: update min and/or max. Changes are recorded in the audit trail.",
+  {
+    lockId: z.string().describe("The lock ID to update"),
+    value: z.number().optional().describe("New threshold value (for numerical/temporal)"),
+    operator: z.enum(["<", "<=", "==", "!=", ">=", ">"]).optional().describe("New operator (for numerical/temporal)"),
+    min: z.number().optional().describe("New minimum (for range)"),
+    max: z.number().optional().describe("New maximum (for range)"),
+    forbidden: z.array(z.object({ from: z.string(), to: z.string() })).optional().describe("New forbidden transitions (for state)"),
+  },
+  async (params) => {
+    const perm = requirePermission("speclock_update_threshold");
+    if (!perm.allowed) return { content: [{ type: "text", text: perm.error }], isError: true };
+
+    const updates = {};
+    if (params.value !== undefined) updates.value = params.value;
+    if (params.operator) updates.operator = params.operator;
+    if (params.min !== undefined) updates.min = params.min;
+    if (params.max !== undefined) updates.max = params.max;
+    if (params.forbidden) updates.forbidden = params.forbidden;
+
+    const result = updateTypedLockThreshold(PROJECT_ROOT, params.lockId, updates);
+
+    if (result.error) {
+      return { content: [{ type: "text", text: `Error: ${result.error}` }], isError: true };
+    }
+
+    return {
+      content: [{
+        type: "text",
+        text: `Threshold updated for ${params.lockId}:\nOld: ${JSON.stringify(result.oldValues)}\nNew: ${JSON.stringify(result.newValues)}\nUpdated description: ${result.brain.specLock.items.find(l => l.id === params.lockId)?.text}`,
+      }],
+    };
   }
 );
 

@@ -17,6 +17,7 @@ import {
 } from "./storage.js";
 import { getStagedFiles } from "./git.js";
 import { analyzeConflict } from "./semantics.js";
+import { checkAllTypedConstraints, CONSTRAINT_TYPES } from "./typed-constraints.js";
 import { ensureInit } from "./memory.js";
 
 // --- Legacy helpers (kept for pre-commit audit backward compat) ---

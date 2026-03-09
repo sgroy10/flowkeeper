@@ -36,6 +36,10 @@ import {
   overrideLock,
   getOverrideHistory,
   semanticAudit,
+  addTypedLock,
+  updateTypedLockThreshold,
+  checkAllTypedConstraints,
+  getEnforcementConfig,
 } from "../core/engine.js";
 import { generateContext, generateContextPack } from "../core/context.js";
 import {
@@ -512,6 +516,101 @@ function createSpecLockServer() {
     return { content: [{ type: "text", text: `Overrides (${result.total}):\n${lines}` }] };
   });
 
+  // ========================================
+  // TYPED CONSTRAINTS — Autonomous Systems Governance (v5.0)
+  // ========================================
+
+  // Tool 29: speclock_add_typed_lock
+  server.tool("speclock_add_typed_lock", "Add a typed constraint for autonomous systems governance.", {
+    constraintType: z.enum(["numerical", "range", "state", "temporal"]),
+    metric: z.string().optional(),
+    operator: z.enum(["<", "<=", "==", "!=", ">=", ">"]).optional(),
+    value: z.number().optional(),
+    min: z.number().optional(),
+    max: z.number().optional(),
+    unit: z.string().optional(),
+    entity: z.string().optional(),
+    forbidden: z.array(z.object({ from: z.string(), to: z.string() })).optional(),
+    requireApproval: z.boolean().optional(),
+    description: z.string().optional(),
+    tags: z.array(z.string()).default([]),
+    source: z.enum(["user", "agent"]).default("user"),
+  }, async (params) => {
+    const constraint = {
+      constraintType: params.constraintType,
+      ...(params.metric && { metric: params.metric }),
+      ...(params.operator && { operator: params.operator }),
+      ...(params.value !== undefined && { value: params.value }),
+      ...(params.min !== undefined && { min: params.min }),
+      ...(params.max !== undefined && { max: params.max }),
+      ...(params.unit && { unit: params.unit }),
+      ...(params.entity && { entity: params.entity }),
+      ...(params.forbidden && { forbidden: params.forbidden }),
+      ...(params.requireApproval !== undefined && { requireApproval: params.requireApproval }),
+    };
+    const result = addTypedLock(PROJECT_ROOT, constraint, params.tags, params.source, params.description);
+    if (result.error) return { content: [{ type: "text", text: `Error: ${result.error}` }], isError: true };
+    return { content: [{ type: "text", text: `Typed lock added (${params.constraintType}): ${result.lockId}` }] };
+  });
+
+  // Tool 30: speclock_check_typed
+  server.tool("speclock_check_typed", "Check a proposed value or state transition against typed constraints.", {
+    metric: z.string().optional(),
+    entity: z.string().optional(),
+    value: z.number().optional(),
+    from: z.string().optional(),
+    to: z.string().optional(),
+  }, async (params) => {
+    const brain = ensureInit(PROJECT_ROOT);
+    const proposed = {
+      ...(params.metric && { metric: params.metric }),
+      ...(params.entity && { entity: params.entity }),
+      ...(params.value !== undefined && { value: params.value }),
+      ...(params.from && { from: params.from }),
+      ...(params.to && { to: params.to }),
+    };
+    const result = checkAllTypedConstraints(brain.specLock?.items || [], proposed);
+    if (result.hasConflict) {
+      const enforcement = getEnforcementConfig(PROJECT_ROOT);
+      const isHard = enforcement.mode === "hard";
+      const topConf = result.conflictingLocks[0]?.confidence || 0;
+      return {
+        content: [{ type: "text", text: `VIOLATION: ${result.analysis}` }],
+        isError: isHard && topConf >= enforcement.blockThreshold,
+      };
+    }
+    return { content: [{ type: "text", text: result.analysis }] };
+  });
+
+  // Tool 31: speclock_list_typed_locks
+  server.tool("speclock_list_typed_locks", "List all typed constraints.", {}, async () => {
+    const brain = ensureInit(PROJECT_ROOT);
+    const typed = (brain.specLock?.items || []).filter(l => l.active !== false && l.constraintType);
+    if (typed.length === 0) return { content: [{ type: "text", text: "No typed constraints. Use speclock_add_typed_lock to add." }] };
+    const lines = typed.map(l => `[${l.constraintType}] ${l.id}: ${l.text}`).join("\n");
+    return { content: [{ type: "text", text: `Typed Constraints (${typed.length}):\n${lines}` }] };
+  });
+
+  // Tool 32: speclock_update_threshold
+  server.tool("speclock_update_threshold", "Update a typed lock threshold.", {
+    lockId: z.string().min(1),
+    value: z.number().optional(),
+    operator: z.enum(["<", "<=", "==", "!=", ">=", ">"]).optional(),
+    min: z.number().optional(),
+    max: z.number().optional(),
+    forbidden: z.array(z.object({ from: z.string(), to: z.string() })).optional(),
+  }, async (params) => {
+    const updates = {};
+    if (params.value !== undefined) updates.value = params.value;
+    if (params.operator) updates.operator = params.operator;
+    if (params.min !== undefined) updates.min = params.min;
+    if (params.max !== undefined) updates.max = params.max;
+    if (params.forbidden) updates.forbidden = params.forbidden;
+    const result = updateTypedLockThreshold(PROJECT_ROOT, params.lockId, updates);
+    if (result.error) return { content: [{ type: "text", text: `Error: ${result.error}` }], isError: true };
+    return { content: [{ type: "text", text: `Updated ${params.lockId}: ${JSON.stringify(result.newValues)}` }] };
+  });
+
   return server;
 }
 
@@ -770,7 +869,7 @@ app.get("/health", (req, res) => {
     status: "healthy",
     version: VERSION,
     uptime: Math.floor((Date.now() - START_TIME) / 1000),
-    tools: 31,
+    tools: 35,
     auditChain: auditStatus,
     authEnabled: isAuthEnabled(PROJECT_ROOT),
     rateLimit: { limit: RATE_LIMIT, windowMs: RATE_WINDOW_MS },
@@ -785,7 +884,7 @@ app.get("/", (req, res) => {
     version: VERSION,
     author: AUTHOR,
     description: "AI Constraint Engine with Policy-as-Code DSL, OAuth/OIDC SSO, admin dashboard, telemetry, API key auth, RBAC, AES-256-GCM encryption, hard enforcement, semantic pre-commit, HMAC audit chain, SOC 2/HIPAA compliance. 31 MCP tools. Enterprise platform.",
-    tools: 31,
+    tools: 35,
     mcp_endpoint: "/mcp",
     health_endpoint: "/health",
     npm: "https://www.npmjs.com/package/speclock",
@@ -808,7 +907,7 @@ app.get("/.well-known/mcp/server-card.json", (req, res) => {
     homepage: "https://sgroy10.github.io/speclock/",
     license: "MIT",
     capabilities: {
-      tools: 31,
+      tools: 35,
       categories: [
         "Memory Management",
         "Change Tracking",

@@ -154,7 +154,7 @@
 <div class="grid">
   <div class="card table-card">
     <table>
-      <thead><tr><th>ID</th><th>Constraint</th><th>Source</th><th>Tags</th><th>Created</th></tr></thead>
+      <thead><tr><th>ID</th><th>Type</th><th>Constraint</th><th>Source</th><th>Tags</th><th>Created</th></tr></thead>
       <tbody id="locks-table"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody>
     </table>
   </div>
@@ -266,11 +266,12 @@ async function loadContext() {
   // Locks table
   const locksBody = document.getElementById('locks-table');
   if (activeLocks.length === 0) {
-    locksBody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">No active locks</td></tr>';
+    locksBody.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">No active locks</td></tr>';
   } else {
     locksBody.innerHTML = activeLocks.map(l => `
       <tr>
         <td><code>${l.id}</code></td>
+        <td><span class="badge ${l.constraintType ? 'medium' : 'low'}">${l.constraintType || 'text'}</span></td>
         <td>${escHtml(l.text)}</td>
         <td><span class="badge active">${l.source || 'agent'}</span></td>
         <td>${(l.tags || []).map(t => `<span class="badge low">${t}</span>`).join(' ') || '-'}</td>
