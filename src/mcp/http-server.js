@@ -901,7 +901,7 @@ app.get("/", (req, res) => {
     name: "speclock",
     version: VERSION,
     author: AUTHOR,
-    description: "AI Constraint Engine for autonomous systems governance. Spec Compiler (NL→constraints), Code Graph (blast radius, lock-to-file mapping), Typed constraints (numerical, range, state, temporal), REST API v2 with batch checking & SSE streaming. Python SDK + ROS2 integration. Policy-as-Code, RBAC, AES-256-GCM encryption, hard enforcement, HMAC audit chain, SOC 2/HIPAA compliance. 42 MCP tools. 940 tests, 99.4% accuracy.",
+    description: "AI Constraint Engine — AI Patch Firewall. Patch Gateway (ALLOW/WARN/BLOCK verdicts), diff-native review (interface breaks, protected symbols, dependency drift, schema changes, API impact). Spec Compiler (NL→constraints), Code Graph (blast radius, lock-to-file mapping), Typed constraints, REST API v2, Python SDK + ROS2 integration. Policy-as-Code, RBAC, AES-256-GCM encryption, HMAC audit chain, SOC 2/HIPAA compliance. 42 MCP tools. 1073 tests, 99.4% accuracy.",
     tools: 42,
     mcp_endpoint: "/mcp",
     health_endpoint: "/health",
@@ -916,7 +916,7 @@ app.get("/.well-known/mcp/server-card.json", (req, res) => {
   res.json({
     name: "SpecLock",
     version: VERSION,
-    description: "AI Constraint Engine for autonomous systems governance. Spec Compiler (NL→constraints via Gemini Flash), Code Graph (dependency parsing, blast radius, lock-to-file mapping), Typed constraints (numerical, range, state, temporal), REST API v2, Python SDK + ROS2 Guardian Node. Hybrid heuristic + Gemini LLM. Policy-as-Code, RBAC, AES-256-GCM encryption, hard enforcement, HMAC audit chain, SOC 2/HIPAA compliance. 42 MCP tools. 940 tests, 99.4% accuracy. Works with Claude Code, Cursor, Windsurf, Cline, Bolt.new, Lovable.",
+    description: "AI Constraint Engine — AI Patch Firewall. Patch Gateway (ALLOW/WARN/BLOCK verdicts), diff-native review (10 scored signals, hard escalation rules). Spec Compiler (NL→constraints via Gemini Flash), Code Graph (blast radius, lock-to-file mapping), Typed constraints, REST API v2, Python SDK + ROS2 Guardian Node. Policy-as-Code, RBAC, AES-256-GCM encryption, HMAC audit chain, SOC 2/HIPAA compliance. 42 MCP tools. 1073 tests, 99.4% accuracy. Works with Claude Code, Cursor, Windsurf, Cline, Bolt.new, Lovable.",
     author: {
       name: "Sandeep Roy",
       url: "https://github.com/sgroy10",
@@ -942,6 +942,10 @@ app.get("/.well-known/mcp/server-card.json", (req, res) => {
         "Real-Time Streaming",
         "Robotics / ROS2",
         "Python SDK",
+        "Patch Gateway",
+        "AI Patch Firewall",
+        "Spec Compiler",
+        "Code Graph",
       ],
     },
     keywords: [
@@ -951,6 +955,8 @@ app.get("/.well-known/mcp/server-card.json", (req, res) => {
       "cursor", "bolt-new", "lovable", "enterprise",
       "robotics", "ros2", "autonomous-systems", "iot", "typed-constraints",
       "real-time", "sse", "batch-api", "python-sdk", "safety",
+      "patch-gateway", "ai-patch-firewall", "diff-review", "blast-radius",
+      "spec-compiler", "code-graph",
     ],
   });
 });
