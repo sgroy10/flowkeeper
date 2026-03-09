@@ -749,6 +749,43 @@ export const CONCEPT_MAP = {
   // Telecom / billing
   "call records":      ["cdr", "call data", "telecom records", "billing records"],
   "subscriber data":   ["customer data", "user data", "telecom records"],
+
+  // Frontend frameworks (alternatives = change framework conflict)
+  "react":             ["frontend framework", "ui framework", "vue", "angular",
+                        "svelte", "sveltekit", "next.js", "nextjs"],
+  "vue":               ["frontend framework", "ui framework", "react", "angular",
+                        "svelte", "sveltekit", "nuxt"],
+  "vue 3":             ["frontend framework", "ui framework", "react", "angular",
+                        "svelte", "sveltekit", "nuxt", "vue"],
+  "vue.js":            ["frontend framework", "ui framework", "react", "angular",
+                        "svelte", "sveltekit", "nuxt", "vue"],
+  "svelte":            ["frontend framework", "ui framework", "react", "vue",
+                        "angular", "sveltekit"],
+  "sveltekit":         ["frontend framework", "ui framework", "react", "vue",
+                        "angular", "svelte", "next.js", "nuxt"],
+  "angular":           ["frontend framework", "ui framework", "react", "vue",
+                        "svelte", "sveltekit"],
+  "next.js":           ["frontend framework", "ui framework", "react", "nuxt",
+                        "sveltekit", "nextjs"],
+  "nextjs":            ["frontend framework", "ui framework", "react", "nuxt",
+                        "sveltekit", "next.js"],
+  "nuxt":              ["frontend framework", "ui framework", "vue", "next.js",
+                        "nextjs", "sveltekit"],
+  "frontend framework":["react", "vue", "angular", "svelte", "sveltekit",
+                        "ui framework", "next.js", "nuxt"],
+  "ui framework":      ["frontend framework", "react", "vue", "angular",
+                        "svelte", "sveltekit"],
+
+  // Backend frameworks (alternatives = change backend conflict)
+  "express":           ["backend framework", "fastify", "koa", "hapi", "nestjs"],
+  "fastify":           ["backend framework", "express", "koa", "hapi", "nestjs"],
+  "django":            ["backend framework", "flask", "fastapi", "rails"],
+  "flask":             ["backend framework", "django", "fastapi"],
+  "fastapi":           ["backend framework", "django", "flask"],
+  "rails":             ["backend framework", "django", "laravel", "ruby on rails"],
+  "laravel":           ["backend framework", "rails", "django", "symfony"],
+  "spring":            ["backend framework", "spring boot", "java framework"],
+  "nestjs":            ["backend framework", "express", "fastify"],
 };
 
 // ===================================================================
@@ -2160,6 +2197,45 @@ export function scoreConflict({ actionText, lockText }) {
     }
   }
 
+  // Check 3d: Non-destructive sub-activities against ANY prohibitive lock
+  // These patterns are inherently safe regardless of subject overlap:
+  // "Write tests for X" → testing never modifies the system
+  // "Update X library version" → version bumps are maintenance
+  // "Add validation to X" → adding safety checks is constructive
+  // "Optimize X queries/performance" → performance tuning ≠ schema change
+  //
+  // GUARD: compound sentences may hide destructive ops behind safe prefixes.
+  // "Optimize DB performance by moving data to unencrypted replica" is NOT safe.
+  // Skip safe-intent if text also contains clearly destructive/insecure content.
+  if (!intentAligned && lockIsProhibitive) {
+    const _actionLowerSafe = actionText.toLowerCase();
+    const _compoundDestructive = /\b(?:unencrypted|plaintext|without\s+encryption|without\s+auth|unsigned|untrusted|insecure|delet(?:e|ing)|remov(?:e|ing)|drop(?:ping)?|destroy|purg(?:e|ing)|wip(?:e|ing)|eras(?:e|ing)|bypass|disabl(?:e|ing)|expos(?:e|ing)|leak|truncat(?:e|ing)|nuk(?:e|ing))\b/i.test(_actionLowerSafe);
+
+    // Pattern 1: Writing/creating/running tests
+    if (!_compoundDestructive && /\b(?:write|create|add|run)\s+(?:unit\s+|integration\s+|e2e\s+|end-to-end\s+)?tests?\b/i.test(_actionLowerSafe)) {
+      intentAligned = true;
+      reasons.push("intent alignment: writing/running tests is non-destructive — does not modify locked system");
+    }
+
+    // Pattern 2: Updating library/client/package version
+    if (!intentAligned && !_compoundDestructive && /\b(?:update|upgrade|bump)\s+\S+\s+(?:library|client|package|dependency|sdk|version)\b/i.test(_actionLowerSafe)) {
+      intentAligned = true;
+      reasons.push("intent alignment: updating library/client version is maintenance — does not modify locked system");
+    }
+
+    // Pattern 3: Adding validation/sanitization (safety improvement)
+    if (!intentAligned && !_compoundDestructive && /\b(?:add|implement|create)\s+(?:input\s+)?(?:validation|sanitization|sanitizing|input\s+checks?)\b/i.test(_actionLowerSafe)) {
+      intentAligned = true;
+      reasons.push("intent alignment: adding validation/sanitization is a safety improvement — does not modify locked system");
+    }
+
+    // Pattern 4: Optimizing queries/performance (non-structural)
+    if (!intentAligned && !_compoundDestructive && /\boptimize\s+\S+\s+(?:query|queries|performance|speed|latency|throughput)\b/i.test(_actionLowerSafe)) {
+      intentAligned = true;
+      reasons.push("intent alignment: optimizing queries/performance is non-destructive — does not modify locked schema/system");
+    }
+  }
+
   // Check 3c: Working WITH locked technology (not replacing it)
   // "Update the Stripe UI components" vs "must always use Stripe" → working WITH Stripe → safe
   // "Update the Stripe payment UI" vs "Stripe API keys must never be exposed" → different subject → safe
@@ -2407,6 +2483,7 @@ const QUESTION_PREFIXES = [
   /^is\s+(?:it\s+)?(?:a\s+)?(?:good\s+idea\s+)?(?:to\s+)?/i,
   /^let\s+me\s+/i,
   /^we\s+should\s+(?:probably\s+)?(?:consider\s+)?(?:look\s+at\s+)?/i,
+  /^how\s+hard\s+(?:would|will|could)\s+it\s+be\s+to\s+/i,
   /^explore\s+(?:using\s+)?/i,
 ];
 
