@@ -117,7 +117,7 @@ function refreshContext(root) {
 
 function printHelp() {
   console.log(`
-SpecLock v5.2.1 — AI Constraint Engine (Spec Compiler + Code Graph + Typed Constraints + Python SDK + ROS2 + REST API v2 + Gemini LLM + Policy-as-Code + Auth + RBAC + Encryption)
+SpecLock v5.2.2 — AI Constraint Engine (Spec Compiler + Code Graph + Typed Constraints + Python SDK + ROS2 + REST API v2 + Gemini LLM + Policy-as-Code + Auth + RBAC + Encryption)
 Developed by Sandeep Roy (github.com/sgroy10)
 
 Usage: speclock <command> [options]
@@ -1099,6 +1099,135 @@ Tip: When starting a new chat, tell the AI:
   // --- STATUS ---
   if (cmd === "status") {
     showStatus(root);
+    return;
+  }
+
+  // --- RELEASE: Automated version bump + publish + deploy ---
+  if (cmd === "release") {
+    const bump = args[0]; // "patch", "minor", or "major"
+    if (!bump || !["patch", "minor", "major"].includes(bump)) {
+      console.log("Usage: speclock release <patch|minor|major>");
+      console.log("  Bumps version in ALL files, commits, pushes, npm publishes, deploys.");
+      process.exit(1);
+    }
+
+    const { execSync } = await import("child_process");
+    const fs = await import("fs");
+
+    // Read current version
+    const pkgPath = path.join(root, "package.json");
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+    const [major, minor, patch] = pkg.version.split(".").map(Number);
+    let newVersion;
+    if (bump === "patch") newVersion = `${major}.${minor}.${patch + 1}`;
+    else if (bump === "minor") newVersion = `${major}.${minor + 1}.0`;
+    else newVersion = `${major + 1}.0.0`;
+
+    console.log(`\n  Releasing v${newVersion} (was ${pkg.version})\n`);
+
+    // Step 1: Version bump in all 7 files
+    const VERSION_FILES = [
+      { file: "package.json", pattern: `"version": "${pkg.version}"`, replacement: `"version": "${newVersion}"` },
+      { file: "src/mcp/http-server.js", pattern: `const VERSION = "${pkg.version}"`, replacement: `const VERSION = "${newVersion}"` },
+      { file: "src/mcp/server.js", pattern: `const VERSION = "${pkg.version}"`, replacement: `const VERSION = "${newVersion}"` },
+      { file: "src/core/compliance.js", pattern: `const VERSION = "${pkg.version}"`, replacement: `const VERSION = "${newVersion}"` },
+      { file: "src/cli/index.js", pattern: `SpecLock v${pkg.version}`, replacement: `SpecLock v${newVersion}` },
+      { file: "src/dashboard/index.html", pattern: `v${pkg.version}`, replacement: `v${newVersion}` },
+    ];
+
+    let filesUpdated = 0;
+    for (const { file, pattern, replacement } of VERSION_FILES) {
+      const filePath = path.join(root, file);
+      if (!fs.existsSync(filePath)) {
+        console.log(`  SKIP  ${file} (not found)`);
+        continue;
+      }
+      const content = fs.readFileSync(filePath, "utf8");
+      const updated = content.replaceAll(pattern, replacement);
+      if (updated !== content) {
+        fs.writeFileSync(filePath, updated);
+        const count = (content.split(pattern).length - 1);
+        console.log(`  DONE  ${file} (${count} replacement${count > 1 ? "s" : ""})`);
+        filesUpdated++;
+      } else {
+        console.log(`  SKIP  ${file} (pattern not found)`);
+      }
+    }
+    console.log(`\n  ${filesUpdated} files updated to v${newVersion}\n`);
+
+    // Step 2: Git commit + push
+    console.log("  Committing...");
+    try {
+      execSync(`git add -A`, { cwd: root, stdio: "pipe" });
+      execSync(`git commit -m "v${newVersion}"`, { cwd: root, stdio: "pipe" });
+      console.log("  DONE  git commit");
+    } catch (e) {
+      console.error("  FAIL  git commit:", e.message);
+      process.exit(1);
+    }
+
+    console.log("  Pushing...");
+    try {
+      execSync(`git push origin main`, { cwd: root, stdio: "pipe" });
+      console.log("  DONE  git push");
+    } catch (e) {
+      console.error("  FAIL  git push:", e.message);
+    }
+
+    // Step 3: npm publish
+    console.log("  Publishing to npm...");
+    try {
+      execSync(`npm publish`, { cwd: root, stdio: "pipe" });
+      console.log("  DONE  npm publish speclock@" + newVersion);
+    } catch (e) {
+      console.error("  FAIL  npm publish:", e.message);
+    }
+
+    // Step 4: Git tag
+    console.log("  Tagging...");
+    try {
+      execSync(`git tag v${newVersion}`, { cwd: root, stdio: "pipe" });
+      execSync(`git push origin v${newVersion}`, { cwd: root, stdio: "pipe" });
+      console.log(`  DONE  git tag v${newVersion}`);
+    } catch (e) {
+      console.error("  FAIL  git tag:", e.message);
+    }
+
+    // Step 5: Railway deploy
+    console.log("  Deploying to Railway...");
+    try {
+      execSync(`railway up`, { cwd: root, stdio: "pipe", timeout: 120000 });
+      console.log("  DONE  railway up");
+    } catch (e) {
+      console.log("  WARN  railway up (may need manual deploy):", e.message?.slice(0, 100));
+    }
+
+    // Step 6: Verify
+    console.log("\n  Verifying...");
+    try {
+      const health = execSync(`curl -s https://speclock-mcp-production.up.railway.app/health`, { timeout: 15000 }).toString();
+      const parsed = JSON.parse(health);
+      if (parsed.version === newVersion) {
+        console.log(`  DONE  Railway health: v${parsed.version} (${parsed.tools} tools)`);
+      } else {
+        console.log(`  WARN  Railway shows v${parsed.version}, expected v${newVersion} (may need a moment)`);
+      }
+    } catch (e) {
+      console.log("  WARN  Health check failed (Railway may still be deploying)");
+    }
+
+    try {
+      const npmVer = execSync(`npm view speclock version`, { timeout: 10000 }).toString().trim();
+      if (npmVer === newVersion) {
+        console.log(`  DONE  npm: speclock@${npmVer}`);
+      } else {
+        console.log(`  WARN  npm shows ${npmVer}, expected ${newVersion} (cache delay)`);
+      }
+    } catch (e) {
+      console.log("  WARN  npm check failed");
+    }
+
+    console.log(`\n  Release v${newVersion} complete.\n`);
     return;
   }
 
