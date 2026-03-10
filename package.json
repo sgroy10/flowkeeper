@@ -22,7 +22,9 @@
 
     "serve": "node src/mcp/server.js",
 
-    "test": "node --experimental-vm-modules node_modules/.bin/jest"
+    "test": "node tests/pre-publish-gate.mjs",
+
+    "prepublishOnly": "node tests/pre-publish-gate.mjs"
 
   },
 
