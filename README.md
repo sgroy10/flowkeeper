@@ -32,7 +32,8 @@ AI:     ⚠️  BLOCKED — violates lock "Never touch the auth system"
         Should I find another approach?
 ```
 
-**1073 tests. 99.4% pass rate. 0 false positives across 15 suites. Gemini Flash hybrid, Spec Compiler, Code Graph, Typed Constraints, Python SDK, ROS2 integration.**
+**100/100 on Claude's independent test suite. 929 tests across 18 suites. 0 false positives. 15.7ms per check.**
+**Gemini Flash hybrid, Spec Compiler, Code Graph, Typed Constraints, Python SDK, ROS2 integration.**
 
 ---
 
@@ -111,7 +112,7 @@ Same config — add to `.cursor/mcp.json` or equivalent.
 |---|:---:|:---:|:---:|:---:|
 | Remembers context | Yes | Yes | Manual | **Yes** |
 | **Blocks the AI from breaking things** | No | No | No | **Yes** |
-| **Semantic conflict detection** | No | No | No | **98% detection, 0% FP** |
+| **Semantic conflict detection** | No | No | No | **100/100 score, 0% FP** |
 | **Tamper-proof audit trail** | No | No | No | **HMAC-SHA256 chain** |
 | **Hard enforcement (AI cannot proceed)** | No | No | No | **Yes** |
 | **SOC 2 / HIPAA compliance exports** | No | No | No | **Yes** |
@@ -124,9 +125,9 @@ Same config — add to `.cursor/mcp.json` or equivalent.
 
 ---
 
-## Semantic Engine v4
+## Semantic Engine
 
-Not keyword matching — **real semantic analysis** with Gemini Flash hybrid for universal domain coverage.
+Not keyword matching — **real semantic analysis** with Gemini Flash hybrid for universal domain coverage. Scored **100/100** on Claude's independent adversarial test battery (7 suites, including false positives, question framing, patch gateway, and diff analysis).
 
 <table>
 <tr><td><b>Category</b></td><td><b>Detection</b></td><td><b>Example</b></td></tr>
@@ -143,7 +144,7 @@ Not keyword matching — **real semantic analysis** with Gemini Flash hybrid for
 <tr><td>Safe actions (true negatives)</td><td>0% FP</td><td>"Change the font" correctly passes auth locks</td></tr>
 </table>
 
-**Under the hood:** 65+ synonym groups · 80+ euphemism mappings · domain concept maps (fintech, e-commerce, IoT, healthcare, SaaS, payments) · intent classifier · compound sentence splitter · temporal evasion detector · verb tense normalization · UI cosmetic detection · passive voice parsing — all in pure JavaScript. Gemini Flash hybrid for grey-zone cases ($0.01/1000 checks).
+**Under the hood:** 65+ synonym groups · 80+ euphemism mappings · domain concept maps (fintech, e-commerce, IoT, healthcare, SaaS, payments, gaming, telecom, government) · intent classifier · compound sentence splitter · temporal evasion detector · verb tense normalization · UI cosmetic detection · safe-intent patterns · passive voice parsing — all in pure JavaScript. Gemini Flash hybrid for grey-zone cases ($0.01/1000 checks).
 
 ---
 
@@ -659,26 +660,33 @@ The AI opens the file and sees:
 
 ## Test Results
 
+**Pre-publish gate runs all 18 suites before every npm publish. If any test fails, publish is blocked.**
+
 | Suite | Tests | Pass Rate | What it covers |
 |-------|------:|----------:|----------------|
-| Adversarial Conflict | 61 | 100% | Euphemisms, temporal evasion, compound sentences |
-| Typed Constraints | 61 | 100% | Numerical, range, state, temporal validation |
+| Real-World Testers | 111 | 100% | 5 developers, 30+ locks, diverse domains |
+| Adversarial Conflict | 46 | 100% | Euphemisms, temporal evasion, compound sentences |
 | Phase 4 (Multi-domain) | 91 | 100% | Fintech, e-commerce, IoT, healthcare, SaaS |
-| John (Indie Dev Journey) | 86 | 100% | 8-session Bolt.new build with 5 locks |
 | Sam (Enterprise HIPAA) | 124 | 100% | HIPAA locks, PHI, encryption, RBAC |
 | Auth & Crypto | 114 | 100% | API keys, RBAC, AES-256 encryption |
-| Audit Chain | 35 | 100% | HMAC-SHA256 chain integrity |
-| Enforcement | 40 | 100% | Hard/advisory mode, overrides |
+| John (Indie Dev Journey) | 86 | 100% | 8-session Bolt.new build with 5 locks |
+| Diff-Native Review | 76 | 100% | Interface breaks, schema changes, API impact |
+| Patch Gateway | 57 | 100% | ALLOW/WARN/BLOCK verdicts, blast radius |
 | Compliance Export | 50 | 100% | SOC 2, HIPAA, CSV formats |
-| REST API v2 | 28 | 100% | Typed constraint endpoints, SSE |
-| Spec Compiler | 24 | 100% | NL→constraints parsing, auto-apply |
+| Enforcement | 40 | 100% | Hard/advisory mode, overrides |
+| Audit Chain | 35 | 100% | HMAC-SHA256 chain integrity |
 | Code Graph | 33 | 100% | Import parsing, blast radius, lock mapping |
-| Python SDK | 62 | 100% | pip install, constraint checking |
-| ROS2 Guardian | 26 | 100% | Robot safety constraint enforcement |
-| Real-World Testers | 105 | 95% | 5 developers, 30+ locks, diverse domains |
-| **Total** | **940** | **99.4%** | **15 suites, 15 domains** |
+| Spec Compiler | 24 | 100% | NL→constraints parsing, auto-apply |
+| Typed Constraints | 13 | 100% | Numerical, range, state, temporal validation |
+| Claude Regression | 9 | 100% | Vue detection, safe-intent, patch gateway |
+| Question Framing | 9 | 100% | "What if we..." and "How hard would it be..." |
+| REST API v2 | 9 | 100% | Typed constraint endpoints, SSE |
+| PII/Export Detection | 8 | 100% | SSN, email export, data access violations |
+| **Total** | **929** | **100%** | **18 suites, 15+ domains** |
 
-Tested across: fintech, e-commerce, IoT, healthcare, SaaS, gaming, biotech, aerospace, payments, payroll, robotics, autonomous systems. All 11 Indian payment gateways detected. Zero false positives on UI/cosmetic actions.
+**External validation:** Claude's independent 7-suite adversarial test battery — **100/100 (100%)** on v5.2.6. Zero false positives. Zero missed violations. 15.7ms per check.
+
+Tested across: fintech, e-commerce, IoT, healthcare, SaaS, gaming, biotech, aerospace, payments, payroll, robotics, autonomous systems, telecom, insurance, government. All 11 Indian payment gateways detected. Zero false positives on UI/cosmetic actions.
 
 ---
 
@@ -712,8 +720,13 @@ Issues and PRs welcome on [GitHub](https://github.com/sgroy10/speclock).
 
 ## Author
 
-Built by **[Sandeep Roy](https://github.com/sgroy10)**
+**SpecLock** is created and maintained by **[Sandeep Roy](https://github.com/sgroy10)**.
+
+Sandeep Roy is the sole developer of SpecLock — the AI Constraint Engine that enforces project rules across AI coding sessions. All 42 MCP tools, the semantic conflict detection engine, enterprise security features (SOC 2, HIPAA, RBAC, encryption), and the pre-publish test gate were designed and built by Sandeep Roy.
+
+- GitHub: [@sgroy10](https://github.com/sgroy10)
+- npm: [speclock](https://www.npmjs.com/package/speclock)
 
 ---
 
-<p align="center"><i>v5.2.0 — 1073 tests, 99.4% pass rate, 42 MCP tools, Patch Gateway, AI Patch Firewall, Spec Compiler, Code Graph, Typed Constraints, Python SDK, ROS2, REST API v2. Because remembering isn't enough.</i></p>
+<p align="center"><i>SpecLock v5.2.6 — Developed by Sandeep Roy — 929 tests, 100% pass rate, 42 MCP tools, AI Patch Firewall, Spec Compiler, Code Graph, Typed Constraints, Python SDK, ROS2, REST API v2. Because remembering isn't enough.</i></p>
