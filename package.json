@@ -2,7 +2,7 @@
 
   "name": "speclock",
 
-  "version": "5.2.5",
+  "version": "5.2.6",
 
   "description": "AI Constraint Engine — AI Patch Firewall. Diff-native review (interface breaks, protected symbols, dependency drift, schema changes, API impact), Patch Gateway (ALLOW/WARN/BLOCK verdicts), Spec Compiler (NL→constraints), Code Graph (blast radius, lock-to-file mapping), Typed constraints, REST API v2, Python SDK, ROS2 integration. 42 MCP tools, Gemini LLM hybrid, HMAC audit chain, RBAC, encryption, SOC 2/HIPAA compliance.",
 

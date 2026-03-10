@@ -2297,6 +2297,39 @@ export function scoreConflict({ actionText, lockText }) {
       intentAligned = true;
       reasons.push("intent alignment: adding a database index is a performance optimization — does not modify locked schema");
     }
+
+    // Pattern 6: Technology maintenance/refactoring vs exposure/secrets locks
+    // "Refactor React component file structure" vs "never expose API keys in frontend code" → safe
+    // "Update React Router to v7" vs "never expose API keys in frontend code" → safe
+    // But: "Expose React state to window" → action mentions "expos" → NOT safe
+    // But: "Add API key to React config" → action mentions "api key" → NOT safe
+    // But: "Update endpoint to include email" vs "never expose email" → direct subject overlap → NOT safe
+    // Root cause: concept map links react→frontend, matching "frontend" in exposure lock.
+    // Fix: constructive tech verbs against exposure locks are safe when action doesn't touch secrets
+    // AND there's no direct subject overlap (overlap is only through concept map expansion).
+    if (!intentAligned && !_compoundDestructive) {
+      const _isMaintenanceAction = /\b(?:refactor|restructure|reorganize|update|upgrade|bump|install|configure|optimize|improve|enhance|test|debug|fix|review|clean|format|lint|style|document|migrate)\b/i.test(_actionLowerSafe);
+      const _lockMentionsExposure = /\b(?:expos(?:e|ed|es|ing)?|leak(?:s|ed|ing)?|secrets?|credentials?|api.?keys?|passwords?|tokens?|sensitive)\b/i.test(lockText);
+      const _actionMentionsExposure = /\b(?:expos(?:e|ed|es|ing)?|leak(?:s|ed|ing)?|secrets?|credentials?|api.?keys?|passwords?|tokens?|sensitive|plain.?text|unencrypt)\b/i.test(_actionLowerSafe);
+      // Guard: check for direct subject overlap between action and lock.
+      // If the action directly mentions the lock's protected subjects (not via concept map),
+      // Pattern 6 should not apply — the action touches the lock's domain.
+      const _p6Exclude = /^(?:expos(?:e[ds]?|ing)?|leak(?:s|ed|ing)?|secrets?|credentials?|passwords?|tokens?|sensitive|never|must|should|always|code|dont|does|through|from|with|into|that|this)$/;
+      const _lockSubjects = lockText.toLowerCase()
+        .split(/[\s,]+/)
+        .map(w => w.replace(/[^a-z0-9]/g, ''))
+        .filter(w => w.length > 3 && !_p6Exclude.test(w));
+      const _actionWords6 = new Set(
+        _actionLowerSafe.split(/[\s,]+/)
+          .map(w => w.replace(/[^a-z0-9]/g, ''))
+          .filter(w => w.length > 3)
+      );
+      const _directSubjectOverlap = _lockSubjects.some(w => _actionWords6.has(w));
+      if (_isMaintenanceAction && _lockMentionsExposure && !_actionMentionsExposure && !_directSubjectOverlap) {
+        intentAligned = true;
+        reasons.push("intent alignment: technology maintenance action does not involve secrets/exposure — safe against exposure lock");
+      }
+    }
   }
 
   // Check 3c: Working WITH locked technology (not replacing it)
