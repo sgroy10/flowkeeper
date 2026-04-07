@@ -1,8 +1,8 @@
 {
   "manifest_version": "0.2",
   "name": "speclock",
-  "version": "3.5.0",
-  "description": "AI constraint engine with Policy-as-Code DSL, OAuth/OIDC SSO, admin dashboard, telemetry, API key auth, RBAC, AES-256-GCM encryption, hard enforcement, semantic pre-commit, HMAC audit chain, SOC 2/HIPAA compliance. 100% detection, 0% false positives. 31 MCP tools + CLI. Enterprise platform.",
+  "version": "5.4.1",
+  "description": "AI Constraint Engine — Universal Rules Sync (Cursor, Claude, Copilot, Windsurf, Gemini, Aider, AGENTS.md), Drift Score (0-100 project integrity), Lock Coverage Audit, Lock Strengthener, Incident Replay, AI Patch Firewall, Spec Compiler, Code Graph, Typed Constraints, REST API v2. 49 MCP tools, 929 tests, 100% accuracy. Developed by Sandeep Roy.",
   "author": {
     "name": "Sandeep Roy (https://github.com/sgroy10)"
   },
