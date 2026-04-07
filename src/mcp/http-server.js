@@ -113,7 +113,7 @@ import { fileURLToPath } from "url";
 import _path from "path";
 
 const PROJECT_ROOT = process.env.SPECLOCK_PROJECT_ROOT || process.cwd();
-const VERSION = "5.2.6";
+const VERSION = "5.3.0";
 const AUTHOR = "Sandeep Roy";
 const START_TIME = Date.now();
 
@@ -901,8 +901,8 @@ app.get("/", (req, res) => {
     name: "speclock",
     version: VERSION,
     author: AUTHOR,
-    description: "AI Constraint Engine — AI Patch Firewall. Patch Gateway (ALLOW/WARN/BLOCK verdicts), diff-native review (interface breaks, protected symbols, dependency drift, schema changes, API impact). Spec Compiler (NL→constraints), Code Graph (blast radius, lock-to-file mapping), Typed constraints, REST API v2, Python SDK + ROS2 integration. Policy-as-Code, RBAC, AES-256-GCM encryption, HMAC audit chain, SOC 2/HIPAA compliance. 42 MCP tools. 1073 tests, 99.4% accuracy.",
-    tools: 42,
+    description: "AI Constraint Engine — Universal Rules Sync + AI Patch Firewall. Syncs constraints to Cursor, Claude Code, Copilot, Windsurf, Gemini, Aider, AGENTS.md. Patch Gateway (ALLOW/WARN/BLOCK verdicts), diff-native review (interface breaks, protected symbols, dependency drift, schema changes, API impact). Spec Compiler (NL→constraints), Code Graph (blast radius, lock-to-file mapping), Typed constraints, REST API v2, Python SDK + ROS2 integration. Policy-as-Code, RBAC, AES-256-GCM encryption, HMAC audit chain, SOC 2/HIPAA compliance. 46 MCP tools. 929 tests, 100% accuracy.",
+    tools: 46,
     mcp_endpoint: "/mcp",
     health_endpoint: "/health",
     npm: "https://www.npmjs.com/package/speclock",

@@ -104,6 +104,75 @@ export const TEMPLATES = {
       "Authentication changes require explicit user approval",
     ],
   },
+
+  "safe-defaults": {
+    name: "safe-defaults",
+    displayName: "Safe Defaults (Vibe Coding Seatbelt)",
+    description: "Prevents the 5 most common AI disasters — database deletion, auth removal, secret exposure, error handling removal, logging disablement",
+    locks: [
+      "Never delete database tables, columns, or user records — migrations must only add or modify, never drop",
+      "Never remove or bypass authentication or authorization — login, signup, session management, and access control are sacred",
+      "Never expose API keys, secrets, passwords, or credentials in client-side code, logs, or error messages",
+      "Never remove error handling, try-catch blocks, or validation logic — these exist for a reason",
+      "Never disable logging, monitoring, or audit trails — observability keeps production alive",
+    ],
+    decisions: [
+      "Safety-first: AI must ask before destructive operations",
+      "All database changes must be additive, not destructive",
+    ],
+  },
+
+  hipaa: {
+    name: "hipaa",
+    displayName: "HIPAA Healthcare",
+    description: "8 constraints for HIPAA-compliant healthcare applications — protects PHI, encryption, audit trails",
+    locks: [
+      "Protected Health Information (PHI) must never be logged, exposed in error messages, or sent to third-party services",
+      "All PHI must be encrypted at rest (AES-256) and in transit (TLS 1.2+) — never store PHI in plaintext",
+      "Authentication must use MFA — never disable or downgrade multi-factor authentication",
+      "Audit logging must capture all access to patient records — never disable audit trails",
+      "Patient data must never be deleted without explicit compliance review — soft-delete only",
+      "FHIR API endpoints must not have breaking changes — healthcare integrations depend on stability",
+      "Session timeout must not exceed 15 minutes of inactivity — never increase or disable session expiry",
+      "Role-based access control must be enforced on all patient data endpoints — never bypass RBAC",
+    ],
+    decisions: [
+      "HIPAA compliance is mandatory — all features must pass compliance review",
+      "PHI storage uses encrypted-at-rest database with per-row access logging",
+    ],
+  },
+
+  "api-stability": {
+    name: "api-stability",
+    displayName: "API Stability",
+    description: "6 constraints for public API projects — protects endpoints, response shapes, versioning",
+    locks: [
+      "Never remove or rename existing API endpoints — deprecated endpoints must continue to work",
+      "Never change the shape of API response objects — adding fields is OK, removing or renaming breaks clients",
+      "Never change HTTP status codes for existing endpoints — clients depend on specific codes",
+      "API versioning must be maintained — never merge v2 changes into v1 endpoints",
+      "Rate limiting and authentication on API endpoints must not be removed or weakened",
+      "Database schema changes must not break existing API contracts — migrations must be backward-compatible",
+    ],
+    decisions: [
+      "API follows semantic versioning — breaking changes require a new API version",
+      "All API changes must be backward-compatible within the same version",
+    ],
+  },
+
+  "solo-founder": {
+    name: "solo-founder",
+    displayName: "Solo Founder",
+    description: "3 essential constraints for solo builders — protects the things that cost you the most time to fix",
+    locks: [
+      "Never delete or drop database tables, user data, or production records — my users' data is sacred",
+      "Never modify the payment or billing system without explicit permission — revenue is life",
+      "Never remove authentication, session management, or access control — security is non-negotiable",
+    ],
+    decisions: [
+      "Ship fast but never break auth, payments, or user data",
+    ],
+  },
 };
 
 export function getTemplateNames() {

@@ -1,4 +1,4 @@
-# SpecLock v5.2.0 — Complete Feature Guide
+# SpecLock v5.3.0 — Complete Feature Guide
 
 **AI Constraint Engine** — The only tool that gives AI coding assistants persistent memory AND active constraint enforcement across sessions.
 
@@ -52,7 +52,7 @@ SpecLock works everywhere because it has three ways to connect:
 ### Mode 1: MCP Remote (Lovable, bolt.diy, Base44)
 ```
 Platform connects to SpecLock's hosted MCP server via URL.
-No installation needed. 42 tools available automatically.
+No installation needed. 46 tools available automatically.
 
 URL: https://speclock-mcp-production.up.railway.app/mcp
 ```
@@ -68,7 +68,7 @@ URL: https://speclock-mcp-production.up.railway.app/mcp
   }
 }
 ```
-The AI tool runs the MCP server locally. 42 tools available via MCP protocol. Claude Code follows server instructions automatically — zero config.
+The AI tool runs the MCP server locally. 46 tools available via MCP protocol. Claude Code follows server instructions automatically — zero config.
 
 ### Mode 3: npm File-Based (Bolt.new, Aider, any platform with npm)
 ```bash
@@ -117,7 +117,7 @@ Result:  CONFLICT (HIGH — 100%) — PostgreSQL and MongoDB are both databases
 
 ---
 
-## 42 MCP Tools
+## 46 MCP Tools
 
 ### Memory Management (8 tools)
 | Tool | Purpose |
@@ -395,12 +395,12 @@ npx speclock watch                          # File watcher
 └──────────────┬──────────────────┬────────────────────┘
                │                  │
      MCP Protocol          File-Based (npm)
-    (42 tool calls)      (reads SPECLOCK.md +
+    (46 tool calls)      (reads SPECLOCK.md +
                         .speclock/context/latest.md,
                          runs CLI commands)
                │                  │
 ┌──────────────▼──────────────────▼────────────────────┐
-│              SpecLock Core Engine v5.2.0               │
+│              SpecLock Core Engine v5.3.0               │
 │  Semantic Engine | Enforcer | Policy | Audit | Git    │
 │  Gemini LLM Hybrid | HMAC Chain | RBAC | Encryption  │
 └──────────────────────┬───────────────────────────────┘
@@ -416,7 +416,7 @@ npx speclock watch                          # File watcher
 
 ---
 
-## Test Results (v5.2.0)
+## Test Results (v5.3.0)
 
 | Suite | Tests | Pass Rate | Domain |
 |-------|------:|----------:|--------|
@@ -451,4 +451,4 @@ npx speclock watch                          # File watcher
 
 ---
 
-*SpecLock v5.2.0 — AI Constraint Engine with Patch Gateway, AI Patch Firewall, Spec Compiler, Code Graph, Typed Constraints, Python SDK, ROS2 Integration, REST API v2, Semantic Conflict Detection, Gemini LLM Hybrid, 42 MCP Tools, HMAC Audit Chain, Hard Enforcement, SOC 2/HIPAA Compliance, AES-256-GCM Encryption, RBAC, Policy-as-Code. 1073 tests, 99.4% accuracy, 0 false positives. Free & open source (MIT). Developed by Sandeep Roy (https://github.com/sgroy10).*
+*SpecLock v5.3.0 — AI Constraint Engine with Patch Gateway, AI Patch Firewall, Spec Compiler, Code Graph, Typed Constraints, Python SDK, ROS2 Integration, REST API v2, Semantic Conflict Detection, Gemini LLM Hybrid, 46 MCP Tools, Universal Rules Sync, Incident Replay, HMAC Audit Chain, Hard Enforcement, SOC 2/HIPAA Compliance, AES-256-GCM Encryption, RBAC, Policy-as-Code. 1073 tests, 99.4% accuracy, 0 false positives. Free & open source (MIT). Developed by Sandeep Roy (https://github.com/sgroy10).*

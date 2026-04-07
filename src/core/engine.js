@@ -85,6 +85,7 @@ import { handleFileEvent } from "./tracking.js";
 export async function watchRepo(root) {
   const { default: chokidar } = await import("chokidar");
   const brain = ensureInit(root);
+  const activeLocks = (brain.specLock?.items || []).filter((l) => l.active !== false);
   const ignore = [
     "**/node_modules/**",
     "**/.git/**",
@@ -92,6 +93,39 @@ export async function watchRepo(root) {
   ];
 
   let lastFileEventAt = 0;
+  let checksThisSession = 0;
+  let blockedThisSession = 0;
+  let warnedThisSession = 0;
+  const recentActivity = [];
+
+  function addActivity(icon, message) {
+    const time = new Date().toISOString().substring(11, 19);
+    recentActivity.unshift({ time, icon, message });
+    if (recentActivity.length > 8) recentActivity.length = 8;
+  }
+
+  function printDashboard() {
+    const lines = [];
+    lines.push("");
+    lines.push("  SpecLock Watch — Live Dashboard");
+    lines.push("  " + "=".repeat(50));
+    lines.push(`  Constraints: ${activeLocks.length} active lock(s)`);
+    lines.push(`  Session:     ${checksThisSession} checks | ${warnedThisSession} warned | ${blockedThisSession} blocked`);
+    lines.push(`  Project:     ${brain.project.name}`);
+    lines.push("");
+    if (recentActivity.length > 0) {
+      lines.push("  Recent Activity:");
+      for (const a of recentActivity) {
+        lines.push(`    ${a.time}  [${a.icon}]  ${a.message}`);
+      }
+    } else {
+      lines.push("  Waiting for file changes...");
+    }
+    lines.push("");
+    lines.push("  Press Ctrl+C to stop.");
+    lines.push("");
+    console.log(lines.join("\n"));
+  }
 
   const watcher = chokidar.watch(root, {
     ignored: ignore,
@@ -101,15 +135,41 @@ export async function watchRepo(root) {
 
   watcher.on("add", (p) => {
     lastFileEventAt = Date.now();
+    const rel = path.relative(root, p);
     handleFileEvent(root, brain, "file_created", p);
+    checksThisSession++;
+    addActivity("ADD", rel);
+    printDashboard();
   });
   watcher.on("change", (p) => {
     lastFileEventAt = Date.now();
+    const rel = path.relative(root, p);
     handleFileEvent(root, brain, "file_changed", p);
+    checksThisSession++;
+    // Check if this file is guarded by any lock
+    const guarded = activeLocks.some((lock) => {
+      const lockLower = (lock.text || "").toLowerCase();
+      const fileLower = rel.toLowerCase();
+      return lockLower.includes(fileLower) ||
+        (fileLower.includes("auth") && lockLower.includes("auth")) ||
+        (fileLower.includes("payment") && lockLower.includes("payment")) ||
+        (fileLower.includes("database") && lockLower.includes("database"));
+    });
+    if (guarded) {
+      warnedThisSession++;
+      addActivity("WARN", `${rel} — touches guarded area`);
+    } else {
+      addActivity("EDIT", rel);
+    }
+    printDashboard();
   });
   watcher.on("unlink", (p) => {
     lastFileEventAt = Date.now();
+    const rel = path.relative(root, p);
     handleFileEvent(root, brain, "file_deleted", p);
+    checksThisSession++;
+    addActivity("DEL", rel);
+    printDashboard();
   });
 
   // Revert detection via HEAD polling
@@ -139,6 +199,8 @@ export async function watchRepo(root) {
         bumpEvents(brain, eventId);
         appendEvent(root, event);
         writeBrain(root, brain);
+        addActivity("REVERT", `HEAD → ${head.gitCommit.substring(0, 12)}`);
+        printDashboard();
       }
       brain.state.head.gitBranch = head.gitBranch;
       brain.state.head.gitCommit = head.gitCommit;
@@ -147,7 +209,7 @@ export async function watchRepo(root) {
     }, 5000);
   }
 
-  console.log("SpecLock watching for changes...");
+  printDashboard();
   return watcher;
 }
 

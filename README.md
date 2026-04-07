@@ -8,7 +8,7 @@
   <a href="https://www.npmjs.com/package/speclock"><img src="https://img.shields.io/npm/v/speclock.svg?style=flat-square&color=4F46E5" alt="npm version" /></a>
   <a href="https://www.npmjs.com/package/speclock"><img src="https://img.shields.io/npm/dm/speclock.svg?style=flat-square&color=22C55E" alt="npm downloads" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="MIT License" /></a>
-  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-42_tools-green.svg?style=flat-square" alt="MCP 42 tools" /></a>
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-42_tools-green.svg?style=flat-square" alt="MCP 46 tools" /></a>
 </p>
 
 <p align="center">
@@ -122,6 +122,86 @@ Same config — add to `.cursor/mcp.json` or equivalent.
 | Works on Bolt.new, Lovable, etc. | No | No | No | **Yes** |
 
 **Other tools remember. SpecLock enforces.**
+
+---
+
+## Universal Rules Sync (v5.3)
+
+One command syncs your SpecLock constraints to every AI coding tool:
+
+```bash
+speclock sync --all
+```
+
+```
+SpecLock Sync Complete
+  ✓ Cursor             → .cursor/rules/speclock.mdc
+  ✓ Claude Code        → CLAUDE.md
+  ✓ AGENTS.md          → AGENTS.md (Linux Foundation standard)
+  ✓ Windsurf           → .windsurf/rules/speclock.md
+  ✓ GitHub Copilot     → .github/copilot-instructions.md
+  ✓ Gemini             → GEMINI.md
+  ✓ Aider              → .aider.conf.yml
+
+7 file(s) synced. Your AI tools will now see SpecLock constraints.
+```
+
+Stop maintaining 3 separate rules files. Define constraints once in SpecLock, sync everywhere.
+
+```bash
+speclock sync --format cursor    # Sync to Cursor only
+speclock sync --preview claude   # Preview without writing
+speclock sync --list             # Show all supported formats
+```
+
+---
+
+## Incident Replay (v5.3)
+
+Flight recorder for your AI coding sessions. See exactly what happened:
+
+```bash
+speclock replay
+
+Session: ses_a1b2c3 (claude-code, 47 min)
+────────────────────────────────────────────
+14:02  [ALLOW]   Create user profile component
+14:08  [ALLOW]   Add form validation
+14:15  [WARN]    Simplify authentication flow
+                 → matched lock: "Never modify auth"
+14:23  [BLOCK]   Clean up old user records
+                 → euphemism detected: "clean up" = deletion
+14:31  [ALLOW]   Update landing page hero section
+
+Score: 5 events | 3 allowed | 1 warned | 1 BLOCKED
+```
+
+```bash
+speclock replay --list           # List available sessions
+speclock replay --session <id>   # Replay specific session
+```
+
+---
+
+## Safety Templates (v5.3)
+
+Pre-built constraint packs for common scenarios:
+
+```bash
+speclock template apply safe-defaults   # 5 locks — "Vibe Coding Seatbelt"
+speclock template apply solo-founder    # 3 locks — auth, payments, data
+speclock template apply hipaa           # 8 locks — HIPAA healthcare
+speclock template apply api-stability   # 6 locks — API contract protection
+```
+
+**Safe Defaults** prevents the 5 most common AI disasters:
+1. Database deletion
+2. Auth removal
+3. Secret exposure
+4. Error handling removal
+5. Logging disablement
+
+One command. Instant protection. `npx speclock setup --template safe-defaults`
 
 ---
 
@@ -434,7 +514,7 @@ POST /api/v2/graph/build
 
 ---
 
-## 42 MCP Tools
+## 46 MCP Tools
 
 <details>
 <summary><b>Memory</b> — goal, locks, decisions, notes, deploy facts</summary>
@@ -542,6 +622,18 @@ POST /api/v2/graph/build
 
 </details>
 
+<details>
+<summary><b>Universal Rules Sync & Incident Replay</b> — cross-tool sync, session replay (v5.3)</summary>
+
+| Tool | What it does |
+|------|-------------|
+| `speclock_sync_rules` | Sync constraints to Cursor, Claude, Copilot, Windsurf, Gemini, Aider, AGENTS.md |
+| `speclock_list_sync_formats` | List all available sync formats |
+| `speclock_replay` | Replay a session's activity — what AI tried and what was caught |
+| `speclock_list_sessions` | List available sessions for replay |
+
+</details>
+
 ---
 
 ## CLI
@@ -569,8 +661,23 @@ speclock hook install                          # Pre-commit hook
 speclock audit                                 # Audit staged files
 
 # Templates
-speclock template apply nextjs                 # Pre-built constraints
-speclock template apply security-hardened
+speclock template apply safe-defaults          # Vibe coding seatbelt (5 locks)
+speclock template apply solo-founder           # Indie builder essentials (3 locks)
+speclock template apply hipaa                  # HIPAA healthcare (8 locks)
+speclock template apply api-stability          # API contract protection (6 locks)
+speclock template apply nextjs                 # Next.js constraints
+speclock template apply security-hardened      # Security hardening
+
+# Sync to AI tools
+speclock sync --all                            # Sync to ALL tools
+speclock sync --format cursor                  # Cursor only
+speclock sync --format claude                  # Claude Code only
+speclock sync --preview windsurf               # Preview without writing
+
+# Incident Replay
+speclock replay                                # Replay last session
+speclock replay --list                         # List sessions
+speclock replay --session <id>                 # Replay specific session
 
 # Auth
 speclock auth create-key --role developer
@@ -614,7 +721,7 @@ The AI opens the file and sees:
 │     AI Tool (Claude Code, Cursor, Bolt.new...)    │
 └────────────┬──────────────────┬──────────────────┘
              │                  │
-   MCP Protocol (42 tools)    npm File-Based
+   MCP Protocol (46 tools)    npm File-Based
              │              (SPECLOCK.md + CLI)
              │                  │
 ┌────────────▼──────────────────▼──────────────────┐
@@ -684,7 +791,7 @@ The AI opens the file and sees:
 | PII/Export Detection | 8 | 100% | SSN, email export, data access violations |
 | **Total** | **929** | **100%** | **18 suites, 15+ domains** |
 
-**External validation:** Claude's independent 7-suite adversarial test battery — **100/100 (100%)** on v5.2.6. Zero false positives. Zero missed violations. 15.7ms per check.
+**External validation:** Claude's independent 7-suite adversarial test battery — **100/100 (100%)** on v5.3.0. Zero false positives. Zero missed violations. 15.7ms per check.
 
 Tested across: fintech, e-commerce, IoT, healthcare, SaaS, gaming, biotech, aerospace, payments, payroll, robotics, autonomous systems, telecom, insurance, government. All 11 Indian payment gateways detected. Zero false positives on UI/cosmetic actions.
 
@@ -722,11 +829,11 @@ Issues and PRs welcome on [GitHub](https://github.com/sgroy10/speclock).
 
 **SpecLock** is created and maintained by **[Sandeep Roy](https://github.com/sgroy10)**.
 
-Sandeep Roy is the sole developer of SpecLock — the AI Constraint Engine that enforces project rules across AI coding sessions. All 42 MCP tools, the semantic conflict detection engine, enterprise security features (SOC 2, HIPAA, RBAC, encryption), and the pre-publish test gate were designed and built by Sandeep Roy.
+Sandeep Roy is the sole developer of SpecLock — the AI Constraint Engine that enforces project rules across AI coding sessions. All 46 MCP tools, the semantic conflict detection engine, enterprise security features (SOC 2, HIPAA, RBAC, encryption), and the pre-publish test gate were designed and built by Sandeep Roy.
 
 - GitHub: [@sgroy10](https://github.com/sgroy10)
 - npm: [speclock](https://www.npmjs.com/package/speclock)
 
 ---
 
-<p align="center"><i>SpecLock v5.2.6 — Developed by Sandeep Roy — 929 tests, 100% pass rate, 42 MCP tools, AI Patch Firewall, Spec Compiler, Code Graph, Typed Constraints, Python SDK, ROS2, REST API v2. Because remembering isn't enough.</i></p>
+<p align="center"><i>SpecLock v5.3.0 — Developed by Sandeep Roy — 929 tests, 100% pass rate, 46 MCP tools, Universal Rules Sync, Incident Replay, AI Patch Firewall, Spec Compiler, Code Graph, Typed Constraints, Python SDK, ROS2, REST API v2. Because remembering isn't enough.</i></p>

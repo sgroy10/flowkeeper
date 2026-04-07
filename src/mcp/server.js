@@ -65,6 +65,8 @@ import {
   parseUnifiedDiff,
 } from "../core/engine.js";
 import { generateContext, generateContextPack } from "../core/context.js";
+import { syncRules, getSyncFormats } from "../core/rules-sync.js";
+import { getReplay, listSessions, formatReplay } from "../core/replay.js";
 import {
   readBrain,
   readEvents,
@@ -120,7 +122,7 @@ const PROJECT_ROOT =
   args.project || process.env.SPECLOCK_PROJECT_ROOT || process.cwd();
 
 // --- MCP Server ---
-const VERSION = "5.2.6";
+const VERSION = "5.3.0";
 const AUTHOR = "Sandeep Roy";
 
 const server = new McpServer(
@@ -1890,6 +1892,133 @@ server.tool(
       if (file.routeChanges.length > 0) lines.push(`  Route Changes: ${file.routeChanges.map(r => `${r.method} ${r.path} [${r.changeType}]`).join(", ")}`);
       if (file.isSchemaFile) lines.push(`  ** Schema/Migration File **`);
     }
+
+    return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+);
+
+// --- Universal Rules Sync (v5.3) ---
+
+// Tool 36: speclock_sync_rules
+server.tool(
+  "speclock_sync_rules",
+  "Sync SpecLock constraints to AI tool rules files. Generates .cursorrules, CLAUDE.md, AGENTS.md, .windsurfrules, copilot-instructions.md, GEMINI.md, and .aider.conf.yml from your SpecLock constraints. One source of truth for all AI tools. Use --format for a specific tool, or sync all at once.",
+  {
+    format: z.enum(["cursor", "claude", "agents", "windsurf", "copilot", "gemini", "codex", "aider", "all"]).optional().default("all").describe("Target format. 'all' syncs to every supported AI tool."),
+    dryRun: z.boolean().optional().default(false).describe("Preview output without writing files"),
+    append: z.boolean().optional().default(false).describe("Append to existing CLAUDE.md instead of overwriting (only for claude format)"),
+  },
+  async ({ format, dryRun, append }) => {
+    const options = { dryRun };
+    if (format && format !== "all") options.format = format;
+    if (append) options.append = true;
+
+    const result = syncRules(PROJECT_ROOT, options);
+
+    if (result.errors.length > 0 && result.synced.length === 0) {
+      return { content: [{ type: "text", text: `Sync failed: ${result.errors.join(", ")}` }], isError: true };
+    }
+
+    const lines = [
+      `## Rules Sync ${dryRun ? "(Preview)" : "Complete"}`,
+      ``,
+      `Constraints synced: ${result.lockCount} lock(s), ${result.decisionCount || 0} decision(s)`,
+      ``,
+    ];
+
+    for (const s of result.synced) {
+      if (dryRun && s.content) {
+        lines.push(`### ${s.name} → ${s.file}`);
+        lines.push("```");
+        lines.push(s.content);
+        lines.push("```");
+        lines.push("");
+      } else {
+        lines.push(`- **${s.name}** → \`${s.file}\` (${s.size} bytes)`);
+      }
+    }
+
+    if (!dryRun && result.synced.length > 0) {
+      lines.push(``, `${result.synced.length} file(s) written. Your AI tools will now see SpecLock constraints.`);
+      lines.push(``, `Tip: Commit these files to git so they're always in sync.`);
+    }
+
+    if (result.errors.length > 0) {
+      lines.push(``, `Warnings: ${result.errors.join(", ")}`);
+    }
+
+    return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+);
+
+// Tool 37: speclock_replay
+server.tool(
+  "speclock_replay",
+  "Replay a session's activity log — shows exactly what AI agents tried and what SpecLock caught. Returns chronological event list with ALLOW/WARN/BLOCK verdicts, changes logged, locks added/removed, and session stats. Like a flight recorder for your AI coding sessions.",
+  {
+    sessionId: z.string().optional().describe("Specific session ID to replay. Omit to replay most recent session."),
+    limit: z.number().optional().default(50).describe("Max events to return"),
+  },
+  async ({ sessionId, limit }) => {
+    const replay = getReplay(PROJECT_ROOT, { sessionId, limit });
+
+    if (!replay.found) {
+      return { content: [{ type: "text", text: replay.error }], isError: true };
+    }
+
+    const formatted = formatReplay(replay);
+    return { content: [{ type: "text", text: `## Incident Replay\n\n\`\`\`\n${formatted}\n\`\`\`` }] };
+  }
+);
+
+// Tool 38: speclock_list_sessions
+server.tool(
+  "speclock_list_sessions",
+  "List available sessions for replay. Shows session IDs, tools used, timestamps, and event counts.",
+  {
+    limit: z.number().optional().default(10).describe("Max sessions to list"),
+  },
+  async ({ limit }) => {
+    const result = listSessions(PROJECT_ROOT, limit);
+
+    if (result.sessions.length === 0) {
+      return { content: [{ type: "text", text: "No sessions recorded yet." }] };
+    }
+
+    const lines = [`## Sessions (${result.total} total)`, ""];
+    for (const s of result.sessions) {
+      const current = s.isCurrent ? " **[ACTIVE]**" : "";
+      lines.push(`- **${s.id}** — ${s.tool} — ${s.startedAt.substring(0, 16)} — ${s.events} events${current}`);
+      if (s.summary && s.summary !== "(no summary)") {
+        lines.push(`  _${s.summary.substring(0, 80)}_`);
+      }
+    }
+    lines.push("", "Use `speclock_replay` with a session ID to see full activity log.");
+
+    return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+);
+
+// Tool 39: speclock_list_sync_formats
+server.tool(
+  "speclock_list_sync_formats",
+  "List all available AI tool formats that SpecLock can sync constraints to. Shows format key, tool name, output file path, and description.",
+  {},
+  async () => {
+    const formats = getSyncFormats();
+    const lines = [
+      `## Available Sync Formats`,
+      ``,
+      `| Format | Tool | Output File | Description |`,
+      `|--------|------|-------------|-------------|`,
+    ];
+
+    for (const f of formats) {
+      lines.push(`| ${f.key} | ${f.name} | \`${f.file}\` | ${f.description} |`);
+    }
+
+    lines.push(``);
+    lines.push(`Use \`speclock_sync_rules\` with a specific format or "all" to sync.`);
 
     return { content: [{ type: "text", text: lines.join("\n") }] };
   }

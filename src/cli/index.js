@@ -62,6 +62,8 @@ import {
   getSSOConfig,
   saveSSOConfig,
 } from "../core/sso.js";
+import { syncRules, getSyncFormats } from "../core/rules-sync.js";
+import { getReplay, listSessions, formatReplay } from "../core/replay.js";
 
 // --- Argument parsing ---
 
@@ -117,7 +119,7 @@ function refreshContext(root) {
 
 function printHelp() {
   console.log(`
-SpecLock v5.2.6 — AI Constraint Engine (Spec Compiler + Code Graph + Typed Constraints + Python SDK + ROS2 + REST API v2 + Gemini LLM + Policy-as-Code + Auth + RBAC + Encryption)
+SpecLock v5.3.0 — AI Constraint Engine (Universal Rules Sync + Spec Compiler + Code Graph + Typed Constraints + Python SDK + ROS2 + REST API v2 + Gemini LLM + Policy-as-Code + Auth + RBAC + Encryption)
 Developed by Sandeep Roy (github.com/sgroy10)
 
 Usage: speclock <command> [options]
@@ -149,7 +151,13 @@ Commands:
   license                         Show license tier and usage info
   context                         Generate and print context pack
   facts deploy [--provider X]     Set deployment facts
-  watch                           Start file watcher (auto-track changes)
+  sync [--format <name>]           Sync constraints to AI tool rules files
+  sync --all                      Sync to ALL formats at once
+  sync --list                     List available sync formats
+  sync --preview <format>         Preview without writing files
+  replay [--session <id>]         Replay session activity — what AI tried & what was caught
+  replay --list                   List available sessions for replay
+  watch                           Start file watcher (live dashboard)
   serve [--project <path>]        Start MCP stdio server
   status                          Show project brain summary
 
@@ -163,7 +171,10 @@ Options:
   --format <soc2|hipaa|csv>       Compliance export format
   --project <path>                Project root (for serve)
 
-Templates: nextjs, react, express, supabase, stripe, security-hardened
+Templates: nextjs, react, express, supabase, stripe, security-hardened,
+           safe-defaults, hipaa, api-stability, solo-founder
+
+Sync Formats: cursor, claude, agents, windsurf, copilot, gemini, codex, aider
 
 Policy-as-Code (v3.5):
   policy list                     List all policy rules
@@ -310,11 +321,17 @@ Files created/updated:
 Next steps:
   To add constraints:  npx speclock lock "Never touch auth files"
   To check conflicts:  npx speclock check "Modifying auth page"
-  To log changes:      npx speclock log-change "Built landing page"
+  To sync to AI tools: npx speclock sync --all
+  To replay sessions:  npx speclock replay
   To see status:       npx speclock status
-
-Tip: When starting a new chat, tell the AI:
-  "Check speclock status and read the project constraints before doing anything"
+${!flags.template ? `
+Quick start templates:
+  npx speclock template apply safe-defaults     — Prevent the 5 most common AI disasters
+  npx speclock template apply solo-founder      — Essential protection for indie builders
+  npx speclock template apply hipaa             — HIPAA healthcare compliance (8 locks)
+  npx speclock template apply api-stability     — Protect your public API contracts
+` : ""}
+Tip: Run "speclock sync --all" to push constraints to Cursor, Claude, Copilot, Windsurf, and more.
 `);
     return;
   }
@@ -1094,6 +1111,119 @@ Tip: When starting a new chat, tell the AI:
     }
     console.error("Usage: speclock encrypt [status]");
     process.exit(1);
+  }
+
+  // --- REPLAY (new: incident replay) ---
+  if (cmd === "replay") {
+    const flags = parseFlags(args);
+
+    if (flags.list) {
+      const result = listSessions(root, 10);
+      console.log(`\nSession History (${result.total} total)`);
+      console.log("=".repeat(60));
+      if (result.sessions.length === 0) {
+        console.log("  No sessions recorded yet.");
+      } else {
+        for (const s of result.sessions) {
+          const current = s.isCurrent ? " [ACTIVE]" : "";
+          console.log(`  ${s.id}  ${s.tool.padEnd(12)}  ${s.startedAt.substring(0, 16)}  ${s.events} events${current}`);
+          if (s.summary && s.summary !== "(no summary)") {
+            console.log(`  ${"".padEnd(16)}  ${s.summary.substring(0, 60)}`);
+          }
+        }
+      }
+      console.log(`\nReplay a session: speclock replay --session <id>`);
+      return;
+    }
+
+    const replay = getReplay(root, {
+      sessionId: flags.session || null,
+      limit: flags.limit ? parseInt(flags.limit, 10) : 50,
+    });
+
+    if (!replay.found) {
+      console.error(replay.error);
+      process.exit(1);
+    }
+
+    console.log(`\nSpecLock Incident Replay`);
+    console.log("=".repeat(60));
+    console.log(formatReplay(replay));
+    return;
+  }
+
+  // --- SYNC (new: universal rules sync) ---
+  if (cmd === "sync") {
+    const flags = parseFlags(args);
+
+    // List available formats
+    if (flags.list) {
+      const formats = getSyncFormats();
+      console.log("\nAvailable Sync Formats:");
+      console.log("=".repeat(55));
+      for (const f of formats) {
+        console.log(`  ${f.key.padEnd(12)} ${f.name.padEnd(18)} → ${f.file}`);
+        console.log(`  ${"".padEnd(12)} ${f.description}`);
+        console.log("");
+      }
+      console.log("Usage:");
+      console.log("  speclock sync --format cursor    Sync to Cursor only");
+      console.log("  speclock sync --all              Sync to ALL formats");
+      console.log("  speclock sync --preview claude   Preview without writing");
+      return;
+    }
+
+    // Preview mode
+    if (flags.preview) {
+      const result = syncRules(root, { format: flags.preview, dryRun: true });
+      if (result.errors.length > 0) {
+        for (const err of result.errors) console.error(err);
+        process.exit(1);
+      }
+      for (const s of result.synced) {
+        console.log(`\n${"=".repeat(55)}`);
+        console.log(`Preview: ${s.name} → ${s.file} (${s.size} bytes)`);
+        console.log("=".repeat(55));
+        console.log(s.content);
+      }
+      return;
+    }
+
+    // Determine format
+    const format = flags.format || (flags.all ? undefined : flags._[0]);
+    if (!format && !flags.all) {
+      console.error("Usage: speclock sync --format <cursor|claude|agents|windsurf|copilot|gemini|aider>");
+      console.error("       speclock sync --all           Sync to all formats");
+      console.error("       speclock sync --list          List formats");
+      console.error("       speclock sync --preview <fmt> Preview output");
+      process.exit(1);
+    }
+
+    const options = {};
+    if (format) options.format = format;
+    if (flags.append) options.append = true;
+
+    const result = syncRules(root, options);
+
+    if (result.errors.length > 0) {
+      for (const err of result.errors) console.error(`Error: ${err}`);
+      if (result.synced.length === 0) process.exit(1);
+    }
+
+    if (result.synced.length > 0) {
+      console.log(`\nSpecLock Sync Complete`);
+      console.log("=".repeat(55));
+      console.log(`Constraints: ${result.lockCount} lock(s), ${result.decisionCount} decision(s)`);
+      console.log("");
+      for (const s of result.synced) {
+        console.log(`  ✓ ${s.name.padEnd(18)} → ${s.file} (${s.size} bytes)`);
+      }
+      console.log(`\n${result.synced.length} file(s) synced. Your AI tools will now see SpecLock constraints.`);
+      if (!format) {
+        console.log("\nTip: Add these files to git so your AI tools read them automatically.");
+      }
+    }
+    return;
   }
 
   // --- STATUS ---
