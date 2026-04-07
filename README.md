@@ -8,7 +8,13 @@
   <a href="https://www.npmjs.com/package/speclock"><img src="https://img.shields.io/npm/v/speclock.svg?style=flat-square&color=4F46E5" alt="npm version" /></a>
   <a href="https://www.npmjs.com/package/speclock"><img src="https://img.shields.io/npm/dm/speclock.svg?style=flat-square&color=22C55E" alt="npm downloads" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="MIT License" /></a>
-  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-42_tools-green.svg?style=flat-square" alt="MCP 49 tools" /></a>
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-49_tools-green.svg?style=flat-square" alt="MCP 49 tools" /></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/drift_score-12%2F100-brightgreen.svg?style=flat-square" alt="Drift Score" />
+  <img src="https://img.shields.io/badge/lock_coverage-83%25-brightgreen.svg?style=flat-square" alt="Lock Coverage" />
+  <img src="https://img.shields.io/badge/lock_strength-85%2F100-brightgreen.svg?style=flat-square" alt="Lock Strength" />
 </p>
 
 <p align="center">
@@ -16,6 +22,10 @@
 </p>
 
 <p align="center"><strong>Developed by <a href="https://github.com/sgroy10">Sandeep Roy</a></strong> · Free &amp; Open Source (MIT License)</p>
+
+---
+
+> **New in v5.4:** `speclock drift` — the only tool that measures how much your AI has drifted from your architecture. `speclock coverage` — find what's unprotected. `speclock strengthen` — grade your locks. Three numbers that tell your project's whole story.
 
 ---
 
