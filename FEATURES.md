@@ -1,4 +1,4 @@
-# SpecLock v5.5.0 — Complete Feature Guide
+# SpecLock v5.5.2 — Complete Feature Guide
 
 **AI Constraint Engine** — The only tool that gives AI coding assistants persistent memory AND active constraint enforcement across sessions.
 
@@ -84,7 +84,7 @@ This is the breakthrough — SpecLock works on platforms that don't support MCP 
 
 Not keyword matching — **real semantic analysis** with Gemini Flash LLM hybrid for universal domain coverage.
 
-**976 tests across 15 suites. 99.4% accuracy. 0 false positives across 15 domains (fintech, e-commerce, IoT, healthcare, SaaS, robotics, autonomous systems, and more).**
+**991 tests across 15 suites. 99.4% accuracy. 0 false positives across 15 domains (fintech, e-commerce, IoT, healthcare, SaaS, robotics, autonomous systems, and more).**
 
 The engine includes:
 - **65+ synonym groups** — Maps across destructive, constructive, modification, security, medical, financial, IoT, payments, and DevOps domains
@@ -209,7 +209,7 @@ Result:  CONFLICT (HIGH — 100%) — PostgreSQL and MongoDB are both databases
 | `speclock_review_patch_diff` | Diff-native review — parses actual diffs for interface breaks, protected symbols, dependency drift, schema changes, API impact |
 | `speclock_parse_diff` | Parse unified diff into structured changes — imports, exports, symbols, routes, schema detection |
 
-### Guardian Mode (2 tools) — NEW in v5.5.0
+### Guardian Mode (2 tools) — NEW in v5.5.2
 | Tool | Purpose |
 |------|---------|
 | `speclock_protect` | Zero-config: reads existing .cursorrules/CLAUDE.md/AGENTS.md, extracts constraints, installs hook, syncs rules |
@@ -406,7 +406,7 @@ npx speclock watch                          # File watcher
                          runs CLI commands)
                │                  │
 ┌──────────────▼──────────────────▼────────────────────┐
-│              SpecLock Core Engine v5.5.0               │
+│              SpecLock Core Engine v5.5.2               │
 │  Semantic Engine | Enforcer | Policy | Audit | Git    │
 │  Gemini LLM Hybrid | HMAC Chain | RBAC | Encryption  │
 └──────────────────────┬───────────────────────────────┘
@@ -422,7 +422,7 @@ npx speclock watch                          # File watcher
 
 ---
 
-## Test Results (v5.5.0)
+## Test Results (v5.5.2)
 
 | Suite | Tests | Pass Rate | Domain |
 |-------|------:|----------:|--------|
@@ -459,4 +459,4 @@ npx speclock watch                          # File watcher
 
 ---
 
-*SpecLock v5.5.0 — Your AI has rules. SpecLock makes them unbreakable. Zero-config Guardian Mode, Universal Rules Sync, AI Patch Firewall, Spec Compiler, Code Graph, Drift Score, 51 MCP Tools, 976 tests, 100% accuracy. Free & open source (MIT). Developed by Sandeep Roy (https://github.com/sgroy10).*
+*SpecLock v5.5.2 — Your AI has rules. SpecLock makes them unbreakable. Zero-config Guardian Mode, Universal Rules Sync, AI Patch Firewall, Spec Compiler, Code Graph, Drift Score, 51 MCP Tools, 991 tests, 100% accuracy. Free & open source (MIT). Developed by Sandeep Roy (https://github.com/sgroy10).*
