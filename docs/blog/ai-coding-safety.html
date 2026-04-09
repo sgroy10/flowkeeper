@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Stop AI Coding Tools From Breaking Your Codebase | SpecLock</title>
+    <meta name="description" content="AI coding tools are powerful but reckless. Learn how to prevent AI from breaking code with constraints, linting, and semantic enforcement. Compare manual review, linting, and SpecLock.">
+    <meta property="og:title" content="How to Stop AI Coding Tools From Breaking Your Codebase">
+    <meta property="og:description" content="AI coding assistants break things. Compare approaches to constraining them: manual review, linting, and semantic enforcement with SpecLock.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://sgroy10.github.io/speclock/blog/ai-coding-safety.html">
+    <meta property="article:published_time" content="2026-04-09">
+    <meta property="article:author" content="Sandeep Roy">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="How to Stop AI Coding Tools From Breaking Your Codebase">
+    <meta name="twitter:description" content="Compare approaches to AI code safety: manual review, linting, and semantic enforcement.">
+    <link rel="canonical" href="https://sgroy10.github.io/speclock/blog/ai-coding-safety.html">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F512;</text></svg>">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "How to Stop AI Coding Tools From Breaking Your Codebase",
+        "description": "AI coding tools are powerful but reckless. Compare approaches to constraining them and learn about semantic enforcement.",
+        "author": { "@type": "Person", "name": "Sandeep Roy", "url": "https://github.com/sgroy10" },
+        "datePublished": "2026-04-09",
+        "dateModified": "2026-04-09",
+        "publisher": { "@type": "Organization", "name": "SpecLock", "url": "https://sgroy10.github.io/speclock/" },
+        "mainEntityOfPage": "https://sgroy10.github.io/speclock/blog/ai-coding-safety.html"
+    }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #ffffff; --surface: #f8f9fb; --border: #e2e5ea; --text: #1a1d23; --text-dim: #6b7280; --accent: #e53e3e; --accent-light: #fee2e2; --green: #16a34a; --green-light: #dcfce7; --yellow: #d97706; --yellow-light: #fef3c7; --blue: #2563eb; --blue-light: #dbeafe; --code-bg: #1e293b; --code-text: #e2e8f0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+        nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 14px 40px; display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+        nav a { text-decoration: none; color: var(--text); }
+        .nav-logo { font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; }
+        .nav-links { display: flex; gap: 24px; align-items: center; }
+        .nav-links a { font-size: 0.9rem; font-weight: 500; color: var(--text-dim); transition: color 0.2s; }
+        .nav-links a:hover { color: var(--accent); }
+        article { max-width: 700px; margin: 0 auto; padding: 120px 24px 80px; }
+        h1 { font-size: 2.2rem; font-weight: 800; margin-bottom: 16px; line-height: 1.2; }
+        .meta { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 40px; }
+        h2 { font-size: 1.4rem; font-weight: 700; margin: 36px 0 16px; }
+        h3 { font-size: 1.15rem; font-weight: 600; margin: 28px 0 12px; }
+        p { margin-bottom: 18px; font-size: 1.02rem; }
+        pre { background: var(--code-bg); color: var(--code-text); padding: 20px 24px; border-radius: 10px; overflow-x: auto; margin: 20px 0; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; line-height: 1.5; }
+        code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; }
+        p code, li code { background: var(--surface); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); }
+        ul, ol { margin: 0 0 18px 24px; }
+        li { margin-bottom: 8px; font-size: 1.02rem; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.95rem; }
+        th, td { padding: 12px 16px; text-align: left; border: 1px solid var(--border); }
+        th { background: var(--surface); font-weight: 600; }
+        .check { color: var(--green); font-weight: 700; }
+        .cross { color: var(--accent); font-weight: 700; }
+        .partial { color: var(--yellow); font-weight: 700; }
+        .cta-box { margin: 48px 0; padding: 32px; background: var(--surface); border-radius: 12px; text-align: center; border: 1px solid var(--border); }
+        .cta-box h3 { margin: 0 0 12px; }
+        .cta-code { display: inline-block; margin-top: 12px; padding: 12px 28px; background: var(--code-bg); color: var(--code-text); border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 1rem; }
+        footer { text-align: center; padding: 40px 24px; color: var(--text-dim); font-size: 0.85rem; }
+        footer a { color: var(--accent); text-decoration: none; }
+        a { color: var(--accent); }
+        @media (max-width: 640px) { h1 { font-size: 1.7rem; } article { padding: 100px 16px 60px; } nav { padding: 14px 16px; } table { font-size: 0.82rem; } th, td { padding: 8px 10px; } }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="https://sgroy10.github.io/speclock/" class="nav-logo">&#x1F512; SpecLock</a>
+        <div class="nav-links">
+            <a href="index.html">Blog</a>
+            <a href="https://github.com/sgroy10/speclock">GitHub</a>
+            <a href="https://www.npmjs.com/package/speclock">npm</a>
+        </div>
+    </nav>
+    <article>
+        <h1>How to Stop AI Coding Tools From Breaking Your Codebase</h1>
+        <div class="meta">By Sandeep Roy &middot; April 9, 2026 &middot; 5 min read</div>
+
+        <p>AI coding tools have fundamentally changed how we write software. GitHub Copilot, Claude Code, Cursor, Windsurf, and Cline generate entire features in seconds. Developers are shipping faster than ever. But there's a growing problem that nobody has a good answer for: <strong>how do you stop these tools from breaking things?</strong></p>
+
+        <p>AI coding assistants are incredibly capable and incredibly reckless. They optimize for completing your request, not for preserving your constraints. They'll happily refactor your authentication module, delete your error handling, switch your ORM, or introduce a dependency vulnerability -- all while telling you they've "improved" your code.</p>
+
+        <p>The industry needs a constraint layer for AI-generated code. Here's the current landscape and where it's headed.</p>
+
+        <h2>The Scale of the Problem</h2>
+
+        <p>Consider what happens in a typical AI-assisted coding session:</p>
+
+        <ul>
+            <li>The AI generates 200-500 lines of code per interaction.</li>
+            <li>A developer reviews maybe 30% of it carefully.</li>
+            <li>Subtle violations -- wrong error handling patterns, missing validation, incorrect import paths -- pass through unnoticed.</li>
+            <li>These accumulate. After a week of AI-assisted development, your codebase has drifted significantly from your standards.</li>
+        </ul>
+
+        <p>This isn't a theoretical risk. Teams are reporting real incidents: production outages caused by AI-generated code that silently removed error handling, security vulnerabilities from AI-suggested dependencies, and data loss from AI-generated database migrations that weren't properly reviewed.</p>
+
+        <h2>Approach 1: Manual Code Review</h2>
+
+        <p>The most common approach is to manually review every line of AI-generated code. This works, but it defeats the purpose of using AI tools in the first place.</p>
+
+        <p><strong>Pros:</strong> Catches everything (if the reviewer is diligent). No tooling required.</p>
+
+        <p><strong>Cons:</strong> Doesn't scale. Developers using AI tools to go faster end up spending more time reviewing than they saved. Review fatigue leads to rubber-stamping. One study found that developers approve 78% of AI-generated pull requests within 3 minutes, regardless of size.</p>
+
+        <h2>Approach 2: Traditional Linting and CI/CD</h2>
+
+        <p>ESLint, Prettier, TypeScript strict mode, and CI pipelines catch a category of issues: syntax errors, formatting violations, type mismatches, and known anti-patterns.</p>
+
+        <p><strong>Pros:</strong> Automated. Consistent. Well-understood tooling.</p>
+
+        <p><strong>Cons:</strong> Linters catch syntactic violations, not semantic ones. A linter can tell you that a variable is unused. It cannot tell you that your AI just replaced your carefully-designed error handling strategy with a generic try-catch that swallows exceptions. Linters operate on code structure. The dangerous AI violations are about code meaning.</p>
+
+        <h2>Approach 3: Rule Files (CLAUDE.md, .cursorrules, AGENTS.md)</h2>
+
+        <p>Every major AI coding tool now supports some form of rule file:</p>
+
+        <ul>
+            <li><strong>CLAUDE.md</strong> for Claude Code</li>
+            <li><strong>.cursorrules</strong> for Cursor</li>
+            <li><strong>AGENTS.md</strong> for GitHub Copilot</li>
+            <li><strong>.windsurfrules</strong> for Windsurf</li>
+        </ul>
+
+        <p><strong>Pros:</strong> Easy to write. Version-controlled. AI tools read them automatically.</p>
+
+        <p><strong>Cons:</strong> No enforcement mechanism whatsoever. These files are injected into the AI's context window as suggestions. The AI "knows" the rules but has no obligation to follow them. As conversations grow longer, rules fade from attention. Direct prompt instructions override rule file constraints.</p>
+
+        <h2>Approach 4: Semantic Enforcement (SpecLock)</h2>
+
+        <p><a href="https://github.com/sgroy10/speclock">SpecLock</a> represents a different approach: a semantic constraint engine that sits between the AI tool and your codebase. Instead of hoping the AI follows rules, SpecLock independently verifies that every change complies with your constraints.</p>
+
+        <p><strong>How it works:</strong></p>
+
+        <ol>
+            <li><strong>Rule ingestion:</strong> SpecLock reads your existing rule files (CLAUDE.md, .cursorrules, AGENTS.md) and converts them into typed, enforceable constraints called "locks."</li>
+            <li><strong>Semantic analysis:</strong> When code changes are generated, SpecLock analyzes the semantic meaning of the diff, not just the text. It understands that removing a <code>try-catch</code> block around a database call violates an "always handle database errors" constraint, even though the words "database error" don't appear in the diff.</li>
+            <li><strong>Conflict detection:</strong> Each change is checked against all active constraints. Conflicts are reported with confidence levels (LOW, MEDIUM, HIGH) and clear explanations.</li>
+            <li><strong>Enforcement:</strong> High-confidence violations can be blocked at commit time via git hooks, or flagged in real-time during the coding session via MCP integration.</li>
+        </ol>
+
+        <h2>Comparison Table</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Capability</th>
+                    <th>Manual Review</th>
+                    <th>Linting</th>
+                    <th>Rule Files</th>
+                    <th>SpecLock</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Catches syntax issues</td>
+                    <td class="check">Yes</td>
+                    <td class="check">Yes</td>
+                    <td class="cross">No</td>
+                    <td class="check">Yes</td>
+                </tr>
+                <tr>
+                    <td>Catches semantic violations</td>
+                    <td class="partial">Sometimes</td>
+                    <td class="cross">No</td>
+                    <td class="cross">No</td>
+                    <td class="check">Yes</td>
+                </tr>
+                <tr>
+                    <td>Scales with AI output</td>
+                    <td class="cross">No</td>
+                    <td class="check">Yes</td>
+                    <td class="cross">No</td>
+                    <td class="check">Yes</td>
+                </tr>
+                <tr>
+                    <td>Blocks violations pre-commit</td>
+                    <td class="cross">No</td>
+                    <td class="check">Yes</td>
+                    <td class="cross">No</td>
+                    <td class="check">Yes</td>
+                </tr>
+                <tr>
+                    <td>Understands project context</td>
+                    <td class="check">Yes</td>
+                    <td class="cross">No</td>
+                    <td class="partial">Partial</td>
+                    <td class="check">Yes</td>
+                </tr>
+                <tr>
+                    <td>Works across all AI tools</td>
+                    <td class="check">Yes</td>
+                    <td class="check">Yes</td>
+                    <td class="cross">No</td>
+                    <td class="check">Yes</td>
+                </tr>
+                <tr>
+                    <td>Tracks constraint drift</td>
+                    <td class="cross">No</td>
+                    <td class="cross">No</td>
+                    <td class="cross">No</td>
+                    <td class="check">Yes</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>The Missing Layer in the AI Coding Stack</h2>
+
+        <p>The AI coding stack today looks like this: AI tool generates code, developer reviews it (maybe), linter checks syntax, CI runs tests, code ships. The gap is between "AI generates code" and "developer reviews it." That's where a semantic enforcement layer belongs.</p>
+
+        <p>SpecLock fills that gap. It's not replacing linters (you should still use them). It's not replacing code review (you should still do that). It's adding the layer that catches the violations that linters can't detect and that tired developers miss: the semantic violations that slowly erode your codebase quality.</p>
+
+        <h2>Getting Started</h2>
+
+        <p>SpecLock is open source, free, and takes one command to set up:</p>
+
+        <pre>npx speclock protect</pre>
+
+        <p>It reads your existing rule files, creates constraints, and starts enforcing. No new configuration format to learn. No dashboard to set up. It works with Claude Code, Cursor, Windsurf, Copilot, and any MCP-compatible tool.</p>
+
+        <div class="cta-box">
+            <h3>Add the missing safety layer to your AI coding workflow.</h3>
+            <p>Free, open source, 51 MCP tools, works with every major AI coding assistant.</p>
+            <div class="cta-code">npx speclock protect</div>
+            <p style="margin-top: 16px;">
+                <a href="https://github.com/sgroy10/speclock">GitHub</a> &middot;
+                <a href="https://www.npmjs.com/package/speclock">npm</a> &middot;
+                <a href="https://sgroy10.github.io/speclock/">Documentation</a>
+            </p>
+        </div>
+    </article>
+    <footer>
+        <p>SpecLock &mdash; AI Remembers. SpecLock Enforces. &middot; <a href="https://github.com/sgroy10/speclock">GitHub</a> &middot; <a href="https://www.npmjs.com/package/speclock">npm</a> &middot; <a href="https://sgroy10.github.io/speclock/">Docs</a></p>
+    </footer>
+</body>
+</html>

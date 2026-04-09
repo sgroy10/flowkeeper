@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Actually Enforce .cursorrules in Cursor | SpecLock</title>
+    <meta name="description" content=".cursorrules not working? Cursor ignores your rules because there's no enforcement layer. Learn how to enforce .cursorrules with SpecLock's semantic constraint engine.">
+    <meta property="og:title" content="How to Actually Enforce .cursorrules in Cursor">
+    <meta property="og:description" content="Your .cursorrules file has great rules. Cursor just doesn't enforce them. Here's how to turn suggestions into hard constraints with SpecLock.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://sgroy10.github.io/speclock/blog/cursorrules-enforcement.html">
+    <meta property="article:published_time" content="2026-04-09">
+    <meta property="article:author" content="Sandeep Roy">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="How to Actually Enforce .cursorrules in Cursor">
+    <meta name="twitter:description" content="Stop Cursor from ignoring your rules. SpecLock turns .cursorrules into enforced constraints.">
+    <link rel="canonical" href="https://sgroy10.github.io/speclock/blog/cursorrules-enforcement.html">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F512;</text></svg>">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "How to Actually Enforce .cursorrules in Cursor",
+        "description": ".cursorrules not working? Cursor ignores your rules because there's no enforcement layer. Learn how to enforce .cursorrules with SpecLock.",
+        "author": { "@type": "Person", "name": "Sandeep Roy", "url": "https://github.com/sgroy10" },
+        "datePublished": "2026-04-09",
+        "dateModified": "2026-04-09",
+        "publisher": { "@type": "Organization", "name": "SpecLock", "url": "https://sgroy10.github.io/speclock/" },
+        "mainEntityOfPage": "https://sgroy10.github.io/speclock/blog/cursorrules-enforcement.html"
+    }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #ffffff; --surface: #f8f9fb; --border: #e2e5ea; --text: #1a1d23; --text-dim: #6b7280; --accent: #e53e3e; --accent-light: #fee2e2; --green: #16a34a; --green-light: #dcfce7; --code-bg: #1e293b; --code-text: #e2e8f0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+        nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 14px 40px; display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+        nav a { text-decoration: none; color: var(--text); }
+        .nav-logo { font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; }
+        .nav-links { display: flex; gap: 24px; align-items: center; }
+        .nav-links a { font-size: 0.9rem; font-weight: 500; color: var(--text-dim); transition: color 0.2s; }
+        .nav-links a:hover { color: var(--accent); }
+        article { max-width: 700px; margin: 0 auto; padding: 120px 24px 80px; }
+        h1 { font-size: 2.2rem; font-weight: 800; margin-bottom: 16px; line-height: 1.2; }
+        .meta { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 40px; }
+        h2 { font-size: 1.4rem; font-weight: 700; margin: 36px 0 16px; }
+        h3 { font-size: 1.15rem; font-weight: 600; margin: 28px 0 12px; }
+        p { margin-bottom: 18px; font-size: 1.02rem; }
+        pre { background: var(--code-bg); color: var(--code-text); padding: 20px 24px; border-radius: 10px; overflow-x: auto; margin: 20px 0; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; line-height: 1.5; }
+        code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; }
+        p code, li code { background: var(--surface); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); }
+        ul, ol { margin: 0 0 18px 24px; }
+        li { margin-bottom: 8px; font-size: 1.02rem; }
+        blockquote { border-left: 3px solid var(--accent); padding: 12px 20px; margin: 20px 0; background: var(--accent-light); border-radius: 0 8px 8px 0; }
+        .cta-box { margin: 48px 0; padding: 32px; background: var(--surface); border-radius: 12px; text-align: center; border: 1px solid var(--border); }
+        .cta-box h3 { margin: 0 0 12px; }
+        .cta-code { display: inline-block; margin-top: 12px; padding: 12px 28px; background: var(--code-bg); color: var(--code-text); border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 1rem; }
+        .success-box { background: var(--green-light); border: 1px solid var(--green); padding: 16px 20px; border-radius: 8px; margin: 20px 0; }
+        footer { text-align: center; padding: 40px 24px; color: var(--text-dim); font-size: 0.85rem; }
+        footer a { color: var(--accent); text-decoration: none; }
+        a { color: var(--accent); }
+        @media (max-width: 640px) { h1 { font-size: 1.7rem; } article { padding: 100px 16px 60px; } nav { padding: 14px 16px; } }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="https://sgroy10.github.io/speclock/" class="nav-logo">&#x1F512; SpecLock</a>
+        <div class="nav-links">
+            <a href="index.html">Blog</a>
+            <a href="https://github.com/sgroy10/speclock">GitHub</a>
+            <a href="https://www.npmjs.com/package/speclock">npm</a>
+        </div>
+    </nav>
+    <article>
+        <h1>How to Actually Enforce .cursorrules in Cursor</h1>
+        <div class="meta">By Sandeep Roy &middot; April 9, 2026 &middot; 5 min read</div>
+
+        <p>If you use Cursor, you've probably discovered <code>.cursorrules</code>. You've seen the <a href="https://github.com/PatrickJS/awesome-cursorrules">awesome-cursorrules</a> repository (39K+ stars) with templates for every framework and language. You've carefully written rules for your project: coding standards, file naming conventions, forbidden patterns, required imports.</p>
+
+        <p>And then Cursor ignored half of them.</p>
+
+        <p>This isn't a bug in Cursor. It's a fundamental limitation of how <code>.cursorrules</code> works. The file provides context to the AI model, but Cursor has no mechanism to enforce those rules. They're guidelines, not guardrails. And there's a massive difference between the two.</p>
+
+        <h2>How .cursorrules Actually Works (and Why It Fails)</h2>
+
+        <p>When Cursor starts a session, it reads your <code>.cursorrules</code> file and injects its contents into the system prompt. This is identical to how <code>CLAUDE.md</code> works for Claude Code and how <code>AGENTS.md</code> works for GitHub Copilot. The AI sees your rules. The AI "understands" your rules. But nothing prevents it from breaking them.</p>
+
+        <p>The failure modes are predictable:</p>
+
+        <ul>
+            <li><strong>Long conversations dilute rules.</strong> As you chat with Cursor over many messages, the <code>.cursorrules</code> content gets further from the model's active attention. By message 20, the model has effectively forgotten half your rules. The technical term is attention decay, and it's a known limitation of transformer architectures.</li>
+            <li><strong>Prompt instructions override rules.</strong> If you say "refactor this component to use hooks," and your <code>.cursorrules</code> says "always use class components," the model resolves the conflict by following the direct instruction. Your rules lose every time.</li>
+            <li><strong>Complex rules get simplified.</strong> A rule like "API routes must validate input with Zod, return standardized error responses, and log to the audit trail" involves three separate requirements. Models consistently implement one or two and skip the rest.</li>
+            <li><strong>No feedback loop.</strong> When a rule is violated, nothing happens. No warning, no error, no notification. The violation is silently committed, and you discover it days later when a customer reports a bug.</li>
+        </ul>
+
+        <h2>The awesome-cursorrules Gap</h2>
+
+        <p>The <a href="https://github.com/PatrickJS/awesome-cursorrules">awesome-cursorrules</a> repository is an incredible community effort. There are templates for React, Next.js, Python, Rust, Go, and dozens of other ecosystems. Each template is well-written, comprehensive, and completely unenforceable.</p>
+
+        <p>Think about that. 39,000 developers have starred a repository full of rules that their AI tools routinely ignore. That's not a documentation problem. That's an enforcement problem.</p>
+
+        <p>You could have the world's most perfectly written <code>.cursorrules</code> file. If there's no enforcement layer, it's still just a suggestion.</p>
+
+        <h2>What Real Enforcement Looks Like</h2>
+
+        <p>Enforcement means three things:</p>
+
+        <ol>
+            <li><strong>Detection:</strong> Automatically identifying when a generated change violates a rule, using semantic understanding rather than simple string matching.</li>
+            <li><strong>Prevention:</strong> Blocking the violating change before it reaches your codebase, ideally at the point of generation or at commit time.</li>
+            <li><strong>Visibility:</strong> Showing the developer exactly which rule was violated, why the change conflicts, and what the constraint requires.</li>
+        </ol>
+
+        <p>This is exactly what <a href="https://github.com/sgroy10/speclock">SpecLock</a> does.</p>
+
+        <h2>SpecLock: .cursorrules Enforcement That Actually Works</h2>
+
+        <p>SpecLock is an open-source MCP constraint engine that reads your <code>.cursorrules</code> file and converts each rule into a semantically-enforced constraint. It works as an MCP server with 51 tools, integrating into Cursor (and Claude Code, Windsurf, Copilot, and Cline).</p>
+
+        <p>Here's what SpecLock does with your .cursorrules:</p>
+
+        <h3>1. Rule Discovery</h3>
+        <p>Run <code>npx speclock protect</code> and SpecLock scans your <code>.cursorrules</code> file. It identifies each rule, classifies it by type (technology constraint, coding standard, forbidden pattern, required pattern), and creates a typed lock for each one.</p>
+
+        <pre>npx speclock protect</pre>
+
+        <div class="success-box">
+            <strong>SpecLock automatically detects rules from:</strong> .cursorrules, CLAUDE.md, AGENTS.md, .windsurfrules, and custom rule files. One command covers all formats.
+        </div>
+
+        <h3>2. Semantic Conflict Detection</h3>
+        <p>When Cursor generates code, SpecLock reviews the changes against your locked constraints. This isn't regex matching. SpecLock understands the semantic meaning of changes. If your rule says "use Tailwind CSS for styling" and Cursor generates an inline <code>style</code> attribute, SpecLock catches it even though the word "Tailwind" appears nowhere in the diff.</p>
+
+        <h3>3. Pre-Commit Blocking</h3>
+        <p>SpecLock integrates with git hooks. Any commit that violates a constraint is blocked with a clear message:</p>
+
+        <pre>CONSTRAINT VIOLATION DETECTED
+
+Rule: "Always use Tailwind CSS for styling"
+Source: .cursorrules (line 14)
+Conflict: Inline style attribute added in src/components/Header.tsx
+Confidence: HIGH
+
+Commit blocked. Override with --force or fix the violation.</pre>
+
+        <h3>4. Drift Monitoring</h3>
+        <p>Over time, small violations accumulate. SpecLock tracks "constraint drift" -- a quantitative measure of how far your codebase has moved from your declared rules. You can check it anytime and see exactly which rules are being followed and which are being eroded.</p>
+
+        <h2>Setting It Up With Cursor</h2>
+
+        <p>SpecLock works with Cursor through the MCP protocol. Setup takes under a minute:</p>
+
+        <pre># Install and protect your project
+npx speclock protect
+
+# SpecLock reads your .cursorrules automatically
+# Constraints are now active</pre>
+
+        <p>Once active, SpecLock works silently in the background. You keep using Cursor exactly as before. The only difference is that now, when Cursor generates code that violates your rules, you'll know about it before it hits your codebase.</p>
+
+        <h2>Your Rules Deserve Enforcement</h2>
+
+        <p>You put time into writing your <code>.cursorrules</code>. You thought carefully about your coding standards, your architecture decisions, your forbidden patterns. Those rules represent real engineering judgment. They shouldn't be suggestions that an AI model casually ignores when the context window gets crowded.</p>
+
+        <p>SpecLock turns your rules into laws. Same <code>.cursorrules</code> file, same workflow, but now with actual enforcement.</p>
+
+        <div class="cta-box">
+            <h3>Start enforcing your .cursorrules today.</h3>
+            <p>One command. No config. Works with your existing rules.</p>
+            <div class="cta-code">npx speclock protect</div>
+            <p style="margin-top: 16px;">
+                <a href="https://github.com/sgroy10/speclock">GitHub</a> &middot;
+                <a href="https://www.npmjs.com/package/speclock">npm</a> &middot;
+                <a href="https://sgroy10.github.io/speclock/">Documentation</a>
+            </p>
+        </div>
+    </article>
+    <footer>
+        <p>SpecLock &mdash; AI Remembers. SpecLock Enforces. &middot; <a href="https://github.com/sgroy10/speclock">GitHub</a> &middot; <a href="https://www.npmjs.com/package/speclock">npm</a> &middot; <a href="https://sgroy10.github.io/speclock/">Docs</a></p>
+    </footer>
+</body>
+</html>

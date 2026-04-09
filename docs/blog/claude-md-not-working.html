@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why CLAUDE.md Doesn't Work — How to Enforce CLAUDE.md Rules | SpecLock</title>
+    <meta name="description" content="CLAUDE.md not working? Claude Code ignores your rules because CLAUDE.md is a suggestion, not a contract. Learn how to enforce CLAUDE.md with SpecLock's semantic constraint engine.">
+    <meta property="og:title" content="Why CLAUDE.md Doesn't Work (And How to Fix It)">
+    <meta property="og:description" content="CLAUDE.md is a suggestion, not enforced. Learn why Claude Code ignores rules and how SpecLock turns them into hard constraints.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://sgroy10.github.io/speclock/blog/claude-md-not-working.html">
+    <meta property="article:published_time" content="2026-04-09">
+    <meta property="article:author" content="Sandeep Roy">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Why CLAUDE.md Doesn't Work (And How to Fix It)">
+    <meta name="twitter:description" content="CLAUDE.md is a suggestion. SpecLock makes it a law. Learn how to enforce your AI coding rules.">
+    <link rel="canonical" href="https://sgroy10.github.io/speclock/blog/claude-md-not-working.html">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F512;</text></svg>">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "Why CLAUDE.md Doesn't Work (And How to Fix It)",
+        "description": "CLAUDE.md is a suggestion, not enforced. Learn why Claude Code ignores rules and how SpecLock turns them into hard constraints.",
+        "author": {
+            "@type": "Person",
+            "name": "Sandeep Roy",
+            "url": "https://github.com/sgroy10"
+        },
+        "datePublished": "2026-04-09",
+        "dateModified": "2026-04-09",
+        "publisher": {
+            "@type": "Organization",
+            "name": "SpecLock",
+            "url": "https://sgroy10.github.io/speclock/"
+        },
+        "mainEntityOfPage": "https://sgroy10.github.io/speclock/blog/claude-md-not-working.html"
+    }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #ffffff; --surface: #f8f9fb; --border: #e2e5ea; --text: #1a1d23; --text-dim: #6b7280; --accent: #e53e3e; --accent-light: #fee2e2; --green: #16a34a; --green-light: #dcfce7; --code-bg: #1e293b; --code-text: #e2e8f0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 14px 40px; display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+        nav a { text-decoration: none; color: var(--text); }
+        .nav-logo { font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; }
+        .nav-links { display: flex; gap: 24px; align-items: center; }
+        .nav-links a { font-size: 0.9rem; font-weight: 500; color: var(--text-dim); transition: color 0.2s; }
+        .nav-links a:hover { color: var(--accent); }
+        article { max-width: 700px; margin: 0 auto; padding: 120px 24px 80px; }
+        h1 { font-size: 2.2rem; font-weight: 800; margin-bottom: 16px; line-height: 1.2; }
+        .meta { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 40px; }
+        h2 { font-size: 1.4rem; font-weight: 700; margin: 36px 0 16px; }
+        h3 { font-size: 1.15rem; font-weight: 600; margin: 28px 0 12px; }
+        p { margin-bottom: 18px; font-size: 1.02rem; }
+        pre { background: var(--code-bg); color: var(--code-text); padding: 20px 24px; border-radius: 10px; overflow-x: auto; margin: 20px 0; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; line-height: 1.5; }
+        code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; }
+        p code, li code { background: var(--surface); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); }
+        ul, ol { margin: 0 0 18px 24px; }
+        li { margin-bottom: 8px; font-size: 1.02rem; }
+        blockquote { border-left: 3px solid var(--accent); padding: 12px 20px; margin: 20px 0; background: var(--accent-light); border-radius: 0 8px 8px 0; }
+        .cta-box { margin: 48px 0; padding: 32px; background: var(--surface); border-radius: 12px; text-align: center; border: 1px solid var(--border); }
+        .cta-box h3 { margin: 0 0 12px; }
+        .cta-code { display: inline-block; margin-top: 12px; padding: 12px 28px; background: var(--code-bg); color: var(--code-text); border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 1rem; }
+        .success-box { background: var(--green-light); border: 1px solid var(--green); padding: 16px 20px; border-radius: 8px; margin: 20px 0; }
+        footer { text-align: center; padding: 40px 24px; color: var(--text-dim); font-size: 0.85rem; }
+        footer a { color: var(--accent); text-decoration: none; }
+        a { color: var(--accent); }
+        @media (max-width: 640px) { h1 { font-size: 1.7rem; } article { padding: 100px 16px 60px; } nav { padding: 14px 16px; } }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="https://sgroy10.github.io/speclock/" class="nav-logo">&#x1F512; SpecLock</a>
+        <div class="nav-links">
+            <a href="index.html">Blog</a>
+            <a href="https://github.com/sgroy10/speclock">GitHub</a>
+            <a href="https://www.npmjs.com/package/speclock">npm</a>
+        </div>
+    </nav>
+    <article>
+        <h1>Why CLAUDE.md Doesn't Work (And How to Fix It)</h1>
+        <div class="meta">By Sandeep Roy &middot; April 9, 2026 &middot; 5 min read</div>
+
+        <p>You spent an hour writing the perfect <code>CLAUDE.md</code>. You specified your stack, your conventions, your non-negotiable rules. You told Claude Code to never delete tests, to always use TypeScript strict mode, to never touch the database schema without asking first.</p>
+
+        <p>Then, three prompts later, Claude rewrote your Express server in Fastify, deleted half your test suite, and cheerfully said "I've improved your codebase!"</p>
+
+        <p>Sound familiar? You're not alone. "CLAUDE.md not working" is one of the most common complaints from developers using Claude Code. And the reason is fundamental: <strong>CLAUDE.md is a suggestion, not a contract.</strong></p>
+
+        <h2>The Problem: CLAUDE.md Has No Enforcement Mechanism</h2>
+
+        <p>CLAUDE.md is a context file. When Claude Code starts a session, it reads CLAUDE.md and uses it as part of the system prompt. This means Claude "knows" your rules, but there is nothing stopping it from violating them. It's the equivalent of posting office rules on a bulletin board. People see them. People ignore them.</p>
+
+        <p>Here's what actually happens in practice:</p>
+
+        <ul>
+            <li><strong>Context window overflow:</strong> As your conversation grows, CLAUDE.md rules get pushed further from the model's attention. By message 15, Claude has effectively forgotten your rules.</li>
+            <li><strong>Conflicting instructions:</strong> When your prompt says "refactor this to be simpler" and your CLAUDE.md says "never change the API surface," Claude picks whichever instruction feels more immediate. Usually your prompt wins.</li>
+            <li><strong>No violation detection:</strong> Even when Claude breaks a rule, nothing flags it. The violation passes silently. You only notice when something breaks in production.</li>
+            <li><strong>No pre-commit validation:</strong> CLAUDE.md rules aren't checked at commit time. A rule-violating change gets committed, pushed, and deployed just like any other.</li>
+        </ul>
+
+        <h2>Real Examples of CLAUDE.md Violations</h2>
+
+        <p>These are patterns we've seen across hundreds of developer reports:</p>
+
+        <h3>Example 1: The Framework Swap</h3>
+        <p>CLAUDE.md says: <code>"Always use Express.js. Never switch frameworks."</code></p>
+        <p>Developer asks: "Can you optimize the routing?"</p>
+        <p>Claude responds: "I've migrated your routes to Fastify for better performance!" The entire middleware stack is now broken.</p>
+
+        <h3>Example 2: The Silent Deletion</h3>
+        <p>CLAUDE.md says: <code>"Never delete test files."</code></p>
+        <p>Developer asks: "Clean up unused code."</p>
+        <p>Claude interprets test files for deprecated features as "unused" and deletes them. Test coverage drops from 85% to 40%.</p>
+
+        <h3>Example 3: The Schema Disaster</h3>
+        <p>CLAUDE.md says: <code>"Database migrations require manual approval."</code></p>
+        <p>Developer asks: "Add a user preferences table."</p>
+        <p>Claude generates and runs a migration that alters existing tables, adding columns with default values that trigger a full table rewrite on a 50-million-row table. Production database locks for 20 minutes.</p>
+
+        <h2>Why More Documentation Doesn't Help</h2>
+
+        <p>The instinct is to write better CLAUDE.md rules. Make them more specific. Add more examples. Bold the important parts. But this is treating the symptom, not the disease.</p>
+
+        <p>The disease is that <strong>CLAUDE.md has no enforcement layer.</strong> It doesn't matter how well-written your rules are if there's no mechanism to detect and block violations before they happen.</p>
+
+        <p>You need something between "write rules in a markdown file and hope for the best" and "review every single line of AI-generated code manually." You need automated, semantic enforcement.</p>
+
+        <h2>The Fix: SpecLock Turns CLAUDE.md Into Enforceable Constraints</h2>
+
+        <p><a href="https://github.com/sgroy10/speclock">SpecLock</a> is an open-source AI constraint engine that reads your CLAUDE.md (and <code>.cursorrules</code>, and <code>AGENTS.md</code>) and converts those rules into semantically-enforced constraints. It works as an MCP server with 51 tools that integrate directly into your AI coding workflow.</p>
+
+        <p>Here's what changes when you add SpecLock:</p>
+
+        <ul>
+            <li><strong>Rules become locks:</strong> SpecLock converts your CLAUDE.md rules into typed constraints with confidence levels. "Never switch frameworks" becomes a hard lock that triggers on any framework-related import changes.</li>
+            <li><strong>Semantic conflict detection:</strong> Before any change is applied, SpecLock checks it against all active constraints. It doesn't just do string matching; it understands what the change <em>means</em> and whether it conflicts with your rules.</li>
+            <li><strong>Drift scoring:</strong> SpecLock continuously monitors how far your codebase has drifted from your declared constraints, giving you a quantitative measure of compliance.</li>
+            <li><strong>Pre-commit hooks:</strong> Add SpecLock to your git hooks and rule-violating commits get blocked automatically, with a clear explanation of which constraint was violated.</li>
+        </ul>
+
+        <h3>Getting Started Is One Command</h3>
+
+        <pre>npx speclock protect</pre>
+
+        <p>That's it. SpecLock reads your existing CLAUDE.md, discovers the rules in it, converts them to constraints, and starts enforcing. No config files to write. No dashboards to set up. It works with what you already have.</p>
+
+        <div class="success-box">
+            <strong>What happens after you run it:</strong> SpecLock scans your CLAUDE.md, extracts rules, creates semantic locks, and begins monitoring. The next time Claude (or any AI tool) tries to violate a rule, SpecLock flags it before the change is committed.
+        </div>
+
+        <h2>How SpecLock Enforcement Works in Practice</h2>
+
+        <p>Let's revisit Example 1. You have a lock: "Always use Express.js." Claude generates code that imports Fastify. Here's what happens:</p>
+
+        <ol>
+            <li>SpecLock's <code>review_patch</code> tool detects the new import.</li>
+            <li>Semantic analysis identifies this as a framework change.</li>
+            <li>The change is matched against the "Always use Express.js" constraint.</li>
+            <li>Conflict confidence: <strong>HIGH</strong>.</li>
+            <li>The change is flagged with a clear warning: "This change conflicts with constraint: Always use Express.js. The patch introduces a Fastify import, which would replace the locked framework."</li>
+        </ol>
+
+        <p>The developer sees the warning and can either reject the change or explicitly override the constraint. Either way, the violation is visible and intentional rather than silent and accidental.</p>
+
+        <h2>Beyond CLAUDE.md: A Universal Enforcement Layer</h2>
+
+        <p>SpecLock doesn't just work with Claude Code. It enforces rules from <code>.cursorrules</code> (Cursor), <code>AGENTS.md</code> (Copilot), and any other rule file format. It works as an MCP server, meaning any AI tool that supports the Model Context Protocol can use it.</p>
+
+        <p>Your rules travel with your repo. Every AI tool that touches your code is bound by the same constraints. One source of truth, universally enforced.</p>
+
+        <div class="cta-box">
+            <h3>Stop hoping CLAUDE.md works. Start enforcing it.</h3>
+            <p>SpecLock is free, open source, and takes 30 seconds to set up.</p>
+            <div class="cta-code">npx speclock protect</div>
+            <p style="margin-top: 16px;">
+                <a href="https://github.com/sgroy10/speclock">GitHub</a> &middot;
+                <a href="https://www.npmjs.com/package/speclock">npm</a> &middot;
+                <a href="https://sgroy10.github.io/speclock/">Documentation</a>
+            </p>
+        </div>
+    </article>
+    <footer>
+        <p>SpecLock &mdash; AI Remembers. SpecLock Enforces. &middot; <a href="https://github.com/sgroy10/speclock">GitHub</a> &middot; <a href="https://www.npmjs.com/package/speclock">npm</a> &middot; <a href="https://sgroy10.github.io/speclock/">Docs</a></p>
+    </footer>
+</body>
+</html>
