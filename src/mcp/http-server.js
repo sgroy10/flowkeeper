@@ -1,6 +1,6 @@
 /**
  * SpecLock MCP HTTP Server — for Railway / remote deployment
- * Wraps the same 22 tools as the stdio server using Streamable HTTP transport.
+ * Wraps the same 51 tools as the stdio server using Streamable HTTP transport.
  * Developed by Sandeep Roy (https://github.com/sgroy10)
  */
 

@@ -181,7 +181,7 @@ A senior engineer building a HIPAA-compliant hospital ERP:
 
 ### Technical Moat: 9/10
 - Pure JavaScript semantic engine (no LLM API dependency = zero variable cost)
-- 1,152 lines of hand-tuned semantic analysis with 55 synonym groups, 30+ euphemisms
+- 1,152 lines of hand-tuned semantic analysis with 65+ synonym groups, 30+ euphemisms
 - 95.65% detection, 0% false positives across 61 adversarial vectors
 - 601 test cases proving enterprise readiness
 

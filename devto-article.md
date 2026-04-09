@@ -75,7 +75,7 @@ When you add a lock, SpecLock embeds it directly in `package.json`. Since every 
 ```
 
 ### Layer 2: Semantic Conflict Detection
-Before any change, SpecLock checks the proposed action against all locks. Not just keyword matching — **synonym expansion** (15 groups), **negation detection**, and **destructive action flagging**:
+Before any change, SpecLock checks the proposed action against all locks. Not just keyword matching — **synonym expansion** (65+ groups), **negation detection**, and **destructive action flagging**:
 
 ```
 Lock:   "No breaking changes to public API"
@@ -149,7 +149,7 @@ Add to `.cursor/mcp.json`:
 }
 ```
 
-This gives you 22 MCP tools — session memory, locks, conflict checking, git checkpoints, change tracking, constraint templates, violation reports, pre-commit hooks, and more.
+This gives you 51 MCP tools — session memory, locks, conflict checking, git checkpoints, change tracking, constraint templates, violation reports, pre-commit hooks, and more.
 
 ### Lovable (MCP Remote — No Install)
 

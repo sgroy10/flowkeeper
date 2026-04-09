@@ -109,7 +109,7 @@ So I built **SpecLock** — an MCP server focused specifically on **constraint e
 
 I'm not competing with memory tools. I'm filling the gap they leave: "You already remember everything. Now stop contradicting yourself."
 
-Technical details: Semantic conflict detection uses synonym expansion (15 synonym groups), negation analysis, destructive action detection, and confidence scoring (0-100).
+Technical details: Semantic conflict detection uses synonym expansion (65+ synonym groups), negation analysis, destructive action detection, and confidence scoring (0-100).
 
 Live tested on a real client project — 4 constraint violations attempted, 4 caught, 0 damage.
 
@@ -146,7 +146,7 @@ SpecLock is an MCP server with 51 tools that:
 
 Key differentiator: SpecLock doesn't just remember — it enforces. When you set a lock like "All API endpoints must require authentication" and someone later tries to "make the health check public," SpecLock flags the conflict with confidence scoring and synonym detection.
 
-Technically, it uses 15 synonym groups, negation word detection, destructive action analysis, and confidence scoring (0-100 with HIGH/MEDIUM/LOW levels).
+Technically, it uses 65+ synonym groups, negation word detection, destructive action analysis, and confidence scoring (0-100 with HIGH/MEDIUM/LOW levels).
 
 Free, MIT licensed, fully offline, zero cloud dependencies. Works with Claude Code, Cursor, Windsurf, Cline, and Codex.
 
@@ -286,7 +286,7 @@ SpecLock is an MCP server with 51 tools organized in 6 categories:
 
 The key feature is **semantic conflict detection**. When you check an action against your locks, SpecLock doesn't just match keywords. It:
 
-- Expands synonyms (15 groups: "change/modify/alter/update/mutate/transform/rewrite")
+- Expands synonyms (65+ groups: "change/modify/alter/update/mutate/transform/rewrite")
 - Detects negation ("Do NOT change" + "change the tagline" = conflict)
 - Flags destructive actions ("remove", "delete", "drop")
 - Returns confidence scores (0-100) with HIGH/MEDIUM/LOW levels

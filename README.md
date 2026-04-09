@@ -884,9 +884,9 @@ The AI opens the file and sees:
 | REST API v2 | 9 | 100% | Typed constraint endpoints, SSE |
 | PII/Export Detection | 8 | 100% | SSN, email export, data access violations |
 | Guardian (Protect) | 47 | 100% | Zero-config rule file extraction |
-| **Total** | **976** | **100%** | **19 suites, 15+ domains** |
+| **Total** | **991** | **100%** | **19 suites, 15+ domains** |
 
-**External validation:** Claude's independent 7-suite adversarial test battery — **100/100 (100%)** on v5.5.2. Zero false positives. Zero missed violations. 15.7ms per check.
+**External validation:** Claude's independent 7-suite adversarial test battery — **100/100 (100%)** on v5.5.3. Zero false positives. Zero missed violations. 15.7ms per check.
 
 Tested across: fintech, e-commerce, IoT, healthcare, SaaS, gaming, biotech, aerospace, payments, payroll, robotics, autonomous systems, telecom, insurance, government. All 11 Indian payment gateways detected. Zero false positives on UI/cosmetic actions.
 
@@ -931,4 +931,4 @@ Sandeep Roy is the sole developer of SpecLock — the AI Constraint Engine that 
 
 ---
 
-<p align="center"><i>SpecLock v5.5.2 — Your AI has rules. SpecLock makes them unbreakable. 991 tests, 100% pass rate, 51 MCP tools, Zero-config Guardian Mode, Universal Rules Sync, AI Patch Firewall, Drift Score. Developed by Sandeep Roy.</i></p>
+<p align="center"><i>SpecLock v5.5.3 — Your AI has rules. SpecLock makes them unbreakable. 991 tests, 100% pass rate, 51 MCP tools, Zero-config Guardian Mode, Universal Rules Sync, AI Patch Firewall, Drift Score. Developed by Sandeep Roy.</i></p>
