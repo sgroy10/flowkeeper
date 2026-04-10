@@ -1,4 +1,7 @@
+import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+import { getStagedDiff, parseDiff } from "../core/pre-commit-semantic.js";
 import {
   ensureInit,
   setGoal,
@@ -56,6 +59,15 @@ import {
 import {
   isTelemetryEnabled,
   getTelemetrySummary,
+  isTelemetryOptedIn,
+  hasTelemetryDecision,
+  enableTelemetry,
+  disableTelemetry,
+  clearTelemetryLog,
+  getOptInTelemetryStatus,
+  ensureTelemetryDecision,
+  recordCommand,
+  TELEMETRY_DEFAULT_ENDPOINT,
 } from "../core/telemetry.js";
 import {
   isSSOEnabled,
@@ -128,11 +140,153 @@ function refreshContext(root) {
   }
 }
 
+// --- Rule packs (speclock init --from <framework>) ---
+
+const RULE_PACKS = {
+  nextjs: {
+    name: "nextjs",
+    displayName: "Next.js",
+    description: "Next.js (App Router, Server Components, TypeScript)",
+  },
+  fastapi: {
+    name: "fastapi",
+    displayName: "FastAPI",
+    description: "FastAPI + Python (async, Pydantic, JWT)",
+  },
+  rails: {
+    name: "rails",
+    displayName: "Ruby on Rails",
+    description: "Ruby on Rails (Strong Params, ActiveRecord)",
+  },
+  react: {
+    name: "react",
+    displayName: "React",
+    description: "Generic React (hooks, state management)",
+  },
+  python: {
+    name: "python",
+    displayName: "Python",
+    description: "Generic Python (security, type hints)",
+  },
+  node: {
+    name: "node",
+    displayName: "Node.js/Express",
+    description: "Node.js/Express (async, security)",
+  },
+};
+
+/**
+ * Locate the rule-packs directory relative to this module.
+ * Works for local dev, npm global installs, and npx cache.
+ */
+function getRulePacksDir() {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  // src/cli/index.js -> src/templates/rule-packs
+  return path.resolve(here, "..", "templates", "rule-packs");
+}
+
+/**
+ * Read a rule pack file. Returns the raw markdown and an estimated rule count
+ * (number of list items under any "## Rules" section).
+ */
+export function loadRulePack(framework) {
+  const pack = RULE_PACKS[framework];
+  if (!pack) {
+    return {
+      ok: false,
+      error:
+        `Unknown framework "${framework}". ` +
+        `Run "speclock init --from list" to see available rule packs.`,
+    };
+  }
+  const dir = getRulePacksDir();
+  const filePath = path.join(dir, `${pack.name}.md`);
+  if (!fs.existsSync(filePath)) {
+    return {
+      ok: false,
+      error: `Rule pack file missing: ${filePath}`,
+    };
+  }
+  const content = fs.readFileSync(filePath, "utf-8");
+  if (!content.trim()) {
+    return { ok: false, error: `Rule pack "${framework}" is empty.` };
+  }
+  // Count rules: lines under any "## Rules" heading that begin with "- " or "* ".
+  const lines = content.split("\n");
+  let inRules = false;
+  let ruleCount = 0;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^##\s+Rules\s*$/i.test(trimmed)) {
+      inRules = true;
+      continue;
+    }
+    if (inRules && /^##\s+/.test(trimmed)) {
+      inRules = false;
+      continue;
+    }
+    if (inRules && /^[-*]\s+/.test(trimmed)) ruleCount++;
+  }
+  return { ok: true, pack, content, ruleCount, filePath };
+}
+
+function printRulePackList() {
+  console.log("\nAvailable rule packs:");
+  const order = ["nextjs", "fastapi", "rails", "react", "python", "node"];
+  const pad = Math.max(...order.map((k) => k.length));
+  for (const key of order) {
+    const p = RULE_PACKS[key];
+    console.log(`  ${p.name.padEnd(pad)}  — ${p.description}`);
+  }
+  console.log("\nUsage: speclock init --from <framework>");
+  console.log("Example: speclock init --from nextjs\n");
+}
+
+/**
+ * Write (or append) a rule pack to CLAUDE.md in `root`.
+ * Returns { ok, displayName, ruleCount, appended, listed, error }.
+ */
+export function initFromRulePack(root, framework) {
+  if (framework === "list" || framework === "--list" || framework === "help") {
+    printRulePackList();
+    return { listed: true };
+  }
+
+  const loaded = loadRulePack(framework);
+  if (!loaded.ok) return { ok: false, error: loaded.error };
+
+  const claudePath = path.join(root, "CLAUDE.md");
+  let appended = false;
+  if (fs.existsSync(claudePath)) {
+    appended = true;
+    const existing = fs.readFileSync(claudePath, "utf-8");
+    const sep =
+      existing.endsWith("\n\n") ? "" : existing.endsWith("\n") ? "\n" : "\n\n";
+    const banner =
+      `\n<!-- Appended by speclock init --from ${framework} -->\n\n`;
+    fs.writeFileSync(claudePath, existing + sep + banner + loaded.content);
+    console.log(
+      `⚠  CLAUDE.md already exists — appending ${loaded.pack.displayName} rule pack ` +
+      `instead of overwriting.`
+    );
+  } else {
+    fs.writeFileSync(claudePath, loaded.content);
+  }
+
+  return {
+    ok: true,
+    displayName: loaded.pack.displayName,
+    ruleCount: loaded.ruleCount,
+    appended,
+    path: claudePath,
+  };
+}
+
 // --- Help text ---
 
 function printHelp() {
   console.log(`
-SpecLock v5.5.4 — Your AI has rules. SpecLock makes them unbreakable.
+SpecLock v5.5.5 — Your AI has rules. SpecLock makes them unbreakable.
 Developed by Sandeep Roy (github.com/sgroy10)
 
 Usage: speclock <command> [options]
@@ -140,6 +294,8 @@ Usage: speclock <command> [options]
 Commands:
   setup [--goal <text>] [--template <name>]  Full setup: init + SPECLOCK.md + context
   init                            Initialize SpecLock in current directory
+  init --from <framework>         Bootstrap CLAUDE.md from a curated rule pack
+                                  (nextjs, fastapi, rails, react, python, node, list)
   goal <text>                     Set or update the project goal
   lock <text> [--tags a,b]        Add a non-negotiable constraint
   lock remove <id>                Remove a lock by ID
@@ -208,7 +364,10 @@ Policy-as-Code (v3.5):
   policy remove <ruleId>          Remove a policy rule
   policy evaluate <action>        Evaluate action against policy rules
   policy export                   Export policy as YAML
-  telemetry [status]              Show telemetry status and analytics
+  telemetry on                    Opt in to anonymous usage telemetry
+  telemetry off                   Opt out of telemetry (revokes immediately)
+  telemetry status                Show opt-in state + last 10 recorded events
+  telemetry clear                 Clear the local telemetry event log
   sso status                      Show SSO configuration
   sso configure --issuer <url>    Configure SSO (--client-id, --client-secret)
 
@@ -286,14 +445,32 @@ function showStatus(root) {
 // --- Main ---
 
 async function main() {
-  const { cmd, args } = parseArgs(process.argv);
+  let { cmd, args } = parseArgs(process.argv);
   const root = rootDir();
+
+  // Fire-and-forget telemetry: hook process exit so we record every
+  // invocation exactly once with its final exit code. Wrapped in try/catch
+  // so telemetry failures can never block or break the CLI.
+  try {
+    process.once("exit", (code) => {
+      try {
+        recordCommand(cmd || "unknown", typeof code === "number" ? code : 0, {
+          projectRoot: root,
+        });
+      } catch (_) { /* swallow */ }
+    });
+  } catch (_) { /* swallow */ }
 
   if (!cmd || cmd === "help" || cmd === "--help" || cmd === "-h") {
     printHelp();
     process.exit(0);
   }
 
+  // Dispatch loop — allows certain commands to rewrite `cmd`/`args` and
+  // `continue dispatch` to re-enter the command switch (used by
+  // `audit --pre-commit` to delegate to `audit-semantic`).
+  // eslint-disable-next-line no-labels
+  dispatch: while (true) {
   // --- SETUP (new: one-shot full setup) ---
   if (cmd === "setup") {
     const flags = parseFlags(args);
@@ -363,6 +540,39 @@ Tip: Run "speclock sync --all" to push constraints to Cursor, Claude, Copilot, W
 
   // --- INIT ---
   if (cmd === "init") {
+    const flags = parseFlags(args);
+
+    // init --from <framework> : bootstrap CLAUDE.md from a curated rule pack
+    if (flags.from) {
+      const framework = String(flags.from).trim().toLowerCase();
+      const result = initFromRulePack(root, framework);
+      if (result.listed) {
+        // Already printed list, nothing else to do.
+        return;
+      }
+      if (!result.ok) {
+        console.error(result.error);
+        process.exit(1);
+      }
+      // Fall through into the rest of the protect flow so the rule pack is
+      // actually activated (locks extracted, hook installed, context refreshed).
+      const report = protect(root, { strict: false });
+      console.log(formatProtectReport(report));
+      try {
+        setEnforcementMode(root, "advisory");
+      } catch (_) { /* ignore */ }
+      console.log(
+        `✓ Initialized SpecLock with ${result.displayName} rule pack ` +
+        `(${result.ruleCount} rules). Edit CLAUDE.md to customize.`
+      );
+      if (result.appended) {
+        console.log(
+          "  Note: CLAUDE.md already existed — rule pack was APPENDED, not overwritten."
+        );
+      }
+      return;
+    }
+
     ensureInit(root);
     createSpecLockMd(root);
     injectPackageJsonMarker(root);
@@ -566,6 +776,13 @@ Tip: Run "speclock sync --all" to push constraints to Cursor, Claude, Copilot, W
 
   // --- PROTECT (zero-config guardian mode) ---
   if (cmd === "protect") {
+    // First-run opt-in prompt (only on the first 'protect' ever, only on TTY).
+    try {
+      if (!hasTelemetryDecision()) {
+        await ensureTelemetryDecision();
+      }
+    } catch (_) { /* swallow — telemetry must never block protect */ }
+
     const flags = parseFlags(args);
     const strict = flags.strict === true || flags.block === true;
     const opts = {
@@ -837,6 +1054,19 @@ Tip: Run "speclock sync --all" to push constraints to Cursor, Claude, Copilot, W
   // --- AUDIT ---
   if (cmd === "audit") {
     const flags = parseFlags(args);
+    // When invoked from the pre-commit hook (either new or legacy), always
+    // route to the semantic audit path so the commit message + diff content
+    // are actually fed through the semantic conflict engine. We do this by
+    // rewriting cmd/args so the audit-semantic branch below picks it up on
+    // the next iteration of the outer dispatch loop.
+    if (flags["pre-commit"] === true) {
+      cmd = "audit-semantic";
+      args = args.filter((a) => a !== "--pre-commit");
+      // Skip the rest of this audit block; dispatch loop will re-enter.
+      // (See `dispatch:` label wrapping the command switch.)
+      // eslint-disable-next-line no-labels
+      continue dispatch;
+    }
     // Warn mode is the default (investor audit: hard-block had too many false positives).
     // Users opt in to hard blocking with --strict, SPECLOCK_STRICT=1, or by running
     // `speclock enforce hard` (which sets the persistent brain enforcement mode).
@@ -1014,6 +1244,106 @@ Tip: Run "speclock sync --all" to push constraints to Cursor, Claude, Copilot, W
   if (cmd === "audit-semantic") {
     const flags = parseFlags(args);
     const result = semanticAudit(root);
+
+    // --- Commit-message + diff-content semantic check ---
+    // The diff-level semanticAudit() above only inspects per-file change
+    // summaries. It does NOT see the commit message, and its summaries can
+    // miss short fragments like "delete user data" that collide with locks
+    // such as "NEVER delete user data". Here we explicitly build a combined
+    // "action description" from the commit message + every added line and
+    // run it through enforceConflictCheck — the same engine used by
+    // `speclock check`.
+    const extraViolations = [];
+    try {
+      // 1. Read commit message (.git/COMMIT_EDITMSG is written by git BEFORE
+      //    pre-commit hooks run).
+      let commitMsg = "";
+      const editMsgPath = path.join(root, ".git", "COMMIT_EDITMSG");
+      if (fs.existsSync(editMsgPath)) {
+        try {
+          commitMsg = fs.readFileSync(editMsgPath, "utf-8")
+            .split("\n")
+            .filter((l) => !l.trim().startsWith("#"))
+            .join("\n")
+            .trim();
+        } catch { /* ignore */ }
+      }
+
+      // 2. Collect added lines from the staged diff.
+      const diffText = getStagedDiff(root);
+      const fileChanges = diffText ? parseDiff(diffText) : [];
+      const addedSnippets = [];
+      for (const fc of fileChanges) {
+        for (const line of fc.addedLines) {
+          // Strip common comment markers so "// delete user data" becomes
+          // "delete user data" for the semantic engine.
+          const cleaned = line
+            .replace(/^\s*(\/\/|#|\/\*+|\*+\/?|--|<!--|-->|;)\s*/, "")
+            .replace(/\*\/\s*$/, "")
+            .replace(/-->\s*$/, "")
+            .trim();
+          if (cleaned) addedSnippets.push(cleaned);
+        }
+      }
+
+      // 3. Build a combined action description. We check the commit message
+      //    as one unit (highest priority), then individual added snippets.
+      const actionsToCheck = [];
+      if (commitMsg) {
+        actionsToCheck.push({ kind: "commit message", text: commitMsg });
+      }
+      // Cap added snippets to avoid blowing up the check loop on huge diffs.
+      for (const snip of addedSnippets.slice(0, 100)) {
+        actionsToCheck.push({ kind: "added code", text: snip });
+      }
+
+      if (actionsToCheck.length > 0) {
+        for (const item of actionsToCheck) {
+          const check = enforceConflictCheck(root, item.text);
+          if (check.hasConflict && check.conflictingLocks.length > 0) {
+            for (const lock of check.conflictingLocks) {
+              extraViolations.push({
+                file: item.kind === "commit message" ? "(commit message)" : "(staged diff)",
+                lockId: lock.id,
+                lockText: lock.text,
+                confidence: lock.confidence,
+                level: lock.level,
+                reason: `${item.kind}: "${item.text.substring(0, 80)}" — ${(lock.reasons || []).join("; ")}`,
+                source: "commit-msg-semantic",
+              });
+            }
+          }
+        }
+      }
+    } catch (err) {
+      // Never fail the hook on internal errors — just note it.
+      console.log(`(speclock: commit-message semantic check skipped: ${err.message})`);
+    }
+
+    // Merge + dedupe by lockId+source-ish key, keeping highest confidence.
+    if (extraViolations.length > 0) {
+      const merged = [...result.violations, ...extraViolations];
+      const bestByKey = new Map();
+      for (const v of merged) {
+        const key = `${v.file}::${v.lockId || v.lockText}`;
+        const existing = bestByKey.get(key);
+        if (!existing || (v.confidence || 0) > (existing.confidence || 0)) {
+          bestByKey.set(key, v);
+        }
+      }
+      result.violations = [...bestByKey.values()].sort(
+        (a, b) => (b.confidence || 0) - (a.confidence || 0)
+      );
+      // Recompute blocked state against the configured threshold.
+      const threshold = result.threshold || 70;
+      if (result.mode === "hard") {
+        result.blocked = result.violations.some((v) => (v.confidence || 0) >= threshold);
+      }
+      result.passed = result.violations.length === 0;
+      result.message = result.blocked
+        ? `BLOCKED: ${result.violations.length} violation(s) detected. Hard enforcement active — commit rejected.`
+        : `WARNING: ${result.violations.length} violation(s) detected. Review before proceeding.`;
+    }
 
     // Warn mode default: only exit 1 if --strict, SPECLOCK_STRICT=1, or brain is in "hard" mode
     // (result.blocked already reflects "hard" mode from brain config).
@@ -1233,30 +1563,102 @@ Tip: Run "speclock sync --all" to push constraints to Cursor, Claude, Copilot, W
     process.exit(1);
   }
 
-  // --- TELEMETRY (v3.5) ---
+  // --- TELEMETRY (opt-in, v5.5) ---
   if (cmd === "telemetry") {
     const sub = args[0];
-    if (sub === "status" || !sub) {
-      const enabled = isTelemetryEnabled();
-      console.log(`\nTelemetry: ${enabled ? "ENABLED" : "DISABLED"}`);
-      if (!enabled) {
-        console.log("Set SPECLOCK_TELEMETRY=true to enable anonymous usage analytics.");
-        return;
-      }
-      const summary = getTelemetrySummary(root);
-      console.log(`Total calls: ${summary.totalCalls}`);
-      console.log(`Avg response: ${summary.avgResponseMs}ms`);
-      console.log(`Sessions: ${summary.sessions.total}`);
-      console.log(`Conflicts: ${summary.conflicts.total} (blocked: ${summary.conflicts.blocked})`);
-      if (summary.topTools.length > 0) {
-        console.log(`\nTop tools:`);
-        for (const t of summary.topTools.slice(0, 5)) {
-          console.log(`  ${t.name}: ${t.count} calls`);
-        }
+
+    if (sub === "on" || sub === "enable") {
+      try {
+        enableTelemetry();
+        console.log("Telemetry: ENABLED.");
+        console.log("We collect anonymous usage data only. See: speclock telemetry status");
+        console.log("To opt out at any time: speclock telemetry off");
+      } catch (_) {
+        console.error("Failed to enable telemetry (ignored).");
       }
       return;
     }
-    console.error("Usage: speclock telemetry [status]");
+
+    if (sub === "off" || sub === "disable") {
+      try {
+        disableTelemetry();
+        console.log("Telemetry: DISABLED. No further events will be recorded or sent.");
+      } catch (_) {
+        console.error("Failed to disable telemetry (ignored).");
+      }
+      return;
+    }
+
+    if (sub === "clear") {
+      try {
+        const r = clearTelemetryLog();
+        console.log(r.cleared ? "Telemetry log cleared." : "No telemetry log to clear.");
+      } catch (_) {
+        console.error("Failed to clear telemetry log (ignored).");
+      }
+      return;
+    }
+
+    if (sub === "status" || !sub) {
+      try {
+        const st = getOptInTelemetryStatus({ eventLimit: 10 });
+        console.log(`\nSpecLock Telemetry (opt-in)`);
+        console.log("=".repeat(50));
+        console.log(`State:         ${st.enabled ? "ENABLED" : "DISABLED"}`);
+        console.log(`Decided:       ${st.decided ? "yes" : "no (will prompt on next 'speclock protect')"}`);
+        if (st.decidedAt) console.log(`Decided at:    ${st.decidedAt}`);
+        if (st.installedAt) console.log(`First run:     ${st.installedAt}`);
+        console.log(`Install id:    ${st.installId}`);
+        console.log(`Endpoint:      ${st.endpoint || "(disabled)"}`);
+        console.log(`Config file:   ${st.configPath}`);
+        console.log(`Events file:   ${st.eventsPath}`);
+        if (st.envOverride) console.log(`Env override:  SPECLOCK_TELEMETRY=${st.envOverride}`);
+        console.log(`Total events:  ${st.eventCount}`);
+        console.log("");
+        console.log("What we collect (anonymous, no PII):");
+        console.log("  installId, version, os, nodeVersion, command, exitCode,");
+        console.log("  enforcementMode, lockCount, ruleFilesFound,");
+        console.log("  mcpClientsConfigured, daysSinceInstall, timestamp");
+        console.log("");
+        console.log("What we NEVER collect:");
+        console.log("  file contents, commit messages, lock content, user names,");
+        console.log("  file paths, IP addresses, project names");
+        console.log("");
+        if (st.sampleEvent) {
+          console.log("Sample event payload:");
+          console.log(JSON.stringify(st.sampleEvent, null, 2));
+          console.log("");
+        }
+        if (st.recentEvents.length > 0) {
+          console.log(`Last ${st.recentEvents.length} event(s):`);
+          for (const e of st.recentEvents) {
+            console.log(`  ${e.timestamp}  ${e.command}  exit=${e.exitCode}  mode=${e.enforcementMode}  locks=${e.lockCount}`);
+          }
+          console.log("");
+        } else {
+          console.log("No events recorded yet.");
+          console.log("");
+        }
+
+        // Also surface the legacy per-project analytics if that layer is enabled.
+        if (isTelemetryEnabled()) {
+          const legacy = getTelemetrySummary(root);
+          if (legacy.enabled) {
+            console.log("Per-project analytics (SPECLOCK_TELEMETRY):");
+            console.log(`  Total MCP tool calls: ${legacy.totalCalls}`);
+            console.log(`  Avg response:         ${legacy.avgResponseMs}ms`);
+            console.log(`  Sessions:             ${legacy.sessions.total}`);
+            console.log(`  Conflicts:            ${legacy.conflicts.total} (blocked: ${legacy.conflicts.blocked})`);
+            console.log("");
+          }
+        }
+      } catch (_) {
+        console.error("Failed to read telemetry status (ignored).");
+      }
+      return;
+    }
+
+    console.error("Usage: speclock telemetry <on|off|status|clear>");
     process.exit(1);
   }
 
@@ -1477,16 +1879,31 @@ Tip: Run "speclock sync --all" to push constraints to Cursor, Claude, Copilot, W
     lines.push("Installation");
     let pkgVersion = "unknown";
     try {
-      // Find our own package.json — walk up from this module
-      const selfPkgPath = path.join(root, "node_modules", "speclock", "package.json");
-      if (fs.existsSync(selfPkgPath)) {
-        pkgVersion = JSON.parse(fs.readFileSync(selfPkgPath, "utf-8")).version;
-      } else {
-        // Maybe running from the repo itself
-        const localPkg = path.join(root, "package.json");
-        if (fs.existsSync(localPkg)) {
-          const p = JSON.parse(fs.readFileSync(localPkg, "utf-8"));
-          if (p.name === "speclock") pkgVersion = p.version;
+      // Walk up from this module's directory to find speclock's package.json
+      // (works for: local install, npm global, npx cache)
+      let dir = path.dirname(fileURLToPath(import.meta.url));
+      for (let i = 0; i < 5; i++) {
+        const candidate = path.join(dir, "package.json");
+        if (fs.existsSync(candidate)) {
+          const p = JSON.parse(fs.readFileSync(candidate, "utf-8"));
+          if (p.name === "speclock") {
+            pkgVersion = p.version;
+            break;
+          }
+        }
+        dir = path.dirname(dir);
+      }
+      // Fallbacks
+      if (pkgVersion === "unknown") {
+        const selfPkgPath = path.join(root, "node_modules", "speclock", "package.json");
+        if (fs.existsSync(selfPkgPath)) {
+          pkgVersion = JSON.parse(fs.readFileSync(selfPkgPath, "utf-8")).version;
+        } else {
+          const localPkg = path.join(root, "package.json");
+          if (fs.existsSync(localPkg)) {
+            const p = JSON.parse(fs.readFileSync(localPkg, "utf-8"));
+            if (p.name === "speclock") pkgVersion = p.version;
+          }
         }
       }
       lines.push(`  ✓ SpecLock v${pkgVersion} installed`);
@@ -1790,12 +2207,40 @@ Tip: Run "speclock sync --all" to push constraints to Cursor, Claude, Copilot, W
     return;
   }
 
+  // End of dispatch loop. If no handler returned/exited, fall through.
+  break;
+  } // end dispatch: while
+
   console.error(`Unknown command: ${cmd}`);
   console.error("Run 'speclock --help' for usage.");
   process.exit(1);
 }
 
-main().catch((err) => {
-  console.error("SpecLock error:", err.message);
-  process.exit(1);
-});
+// Only run the CLI when this file is invoked as the entry point — either
+// directly (`node src/cli/index.js`) or through the bin wrapper
+// (`bin/speclock.js` does `import "../src/cli/index.js"`). Skip autorun when
+// this module is imported by tests or other tooling that only needs the
+// exported helpers (`loadRulePack`, `initFromRulePack`).
+const shouldAutoRun = (() => {
+  if (process.env.SPECLOCK_CLI_NO_AUTORUN === "1") return false;
+  try {
+    const thisFile = fileURLToPath(import.meta.url);
+    const entryFile = process.argv[1] ? path.resolve(process.argv[1]) : "";
+    if (!entryFile) return true;
+    if (thisFile === entryFile) return true;
+    // bin wrapper: bin/speclock.js (or any file under a /bin/ directory
+    // whose basename starts with "speclock").
+    const base = path.basename(entryFile).toLowerCase();
+    if (base.startsWith("speclock")) return true;
+    return false;
+  } catch (_) {
+    return true;
+  }
+})();
+
+if (shouldAutoRun) {
+  main().catch((err) => {
+    console.error("SpecLock error:", err.message);
+    process.exit(1);
+  });
+}

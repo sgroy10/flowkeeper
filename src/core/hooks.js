@@ -8,11 +8,14 @@ const HOOK_MARKER = "# SPECLOCK-HOOK";
 
 const HOOK_SCRIPT = `#!/bin/sh
 ${HOOK_MARKER} — Do not remove this line
-# SpecLock pre-commit hook: checks staged files against active locks
+# SpecLock pre-commit hook: runs semantic audit of staged diff + commit message
+# against active locks. Unlike the legacy 'audit' subcommand, this one feeds
+# the actual diff content AND the commit message through the semantic conflict
+# engine — the same one used by 'speclock check'.
 # Install: npx speclock hook install
 # Remove:  npx speclock hook remove
 
-npx speclock audit
+npx speclock audit-semantic --pre-commit
 exit $?
 `;
 

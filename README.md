@@ -25,7 +25,41 @@
 
 ---
 
-> **New in v5.5:** `npx speclock protect` — zero-config Guardian Mode. Reads your existing `.cursorrules`, `CLAUDE.md`, `AGENTS.md`, extracts enforceable constraints, installs a pre-commit hook. One command. Your rules are now enforced, not just suggested. Also: ALWAYS/MUST pattern enforcement catches "switch from TypeScript to JavaScript" and "skip input validation."
+## Quick Start
+
+```bash
+npx speclock protect              # Install in your project (creates CLAUDE.md if missing)
+speclock mcp install claude-code  # Wire up MCP for Claude Code (or cursor, windsurf, cline, codex)
+speclock doctor                   # Verify everything is set up correctly
+```
+
+That's it. Your AI now has rules it can't ignore. Default mode is WARN (loud warnings, no blocks). Opt in to hard enforcement with `speclock protect --strict`.
+
+## What's New in v5.5.4
+
+- **Default WARN mode** — no more false-positive blocks. Loud warnings instead. Opt in to strict with `--strict` or `SPECLOCK_STRICT=1`.
+- **`speclock mcp install <client>`** — autoinstaller for Claude Code, Cursor, Windsurf, Cline, Codex. No more hand-editing JSON.
+- **Greenfield support** — `speclock protect` in fresh projects auto-creates CLAUDE.md with safe defaults.
+- **`speclock doctor`** — health check verifying installation, git hook, rule files, and MCP integration. Prints exact fix commands for any issues.
+
+## What is SpecLock?
+
+**SpecLock is an AI constraint engine that enforces your project rules across every AI coding session.** Your AI keeps breaking things you told it not to touch — SpecLock makes it stop.
+
+## Commands Reference
+
+```bash
+speclock protect                      # Install pre-commit hook + extract locks from rule files
+speclock protect --strict             # Hard enforcement mode (blocks violations)
+speclock doctor                       # Health check — verifies install, hooks, rules, MCP
+speclock mcp install <client>         # Wire up MCP server (claude-code, cursor, windsurf, cline, codex)
+speclock check "action description"   # Test if an action would conflict with locks
+speclock add-lock "rule"              # Add a new lock
+speclock list-locks                   # Show all locks
+speclock enforce hard|advisory        # Change enforcement mode
+```
+
+Full command reference: `npx speclock help`
 
 ---
 
@@ -43,25 +77,6 @@ AI:     ⚠️  BLOCKED — violates lock "Never touch the auth system"
 ```
 
 **100/100 on Claude's independent test suite. 991 tests across 19 suites. 0 false positives. 15.7ms per check.**
-**Zero-config Guardian Mode, Universal Rules Sync, AI Patch Firewall, Drift Score, Spec Compiler, Code Graph.**
-
----
-
-## Install
-
-```bash
-npx speclock setup --goal "Build my app"
-```
-
-That's it. One command. Works everywhere — Bolt.new, Claude Code, Cursor, Lovable, Windsurf, Cline, Aider.
-
-### Already have `.cursorrules`, `CLAUDE.md`, or `AGENTS.md`?
-
-```bash
-npx speclock protect
-```
-
-Zero flags. Reads your existing rule files, extracts enforceable constraints, installs a pre-commit hook, and syncs rules to every AI tool. **Your rules are now enforced, not just suggested.**
 
 ## The Problem
 
@@ -140,153 +155,6 @@ Same config — add to `.cursor/mcp.json` or equivalent.
 | Works on Bolt.new, Lovable, etc. | No | No | No | **Yes** |
 
 **Other tools remember. SpecLock enforces.**
-
----
-
-## Universal Rules Sync (v5.3)
-
-One command syncs your SpecLock constraints to every AI coding tool:
-
-```bash
-speclock sync --all
-```
-
-```
-SpecLock Sync Complete
-  ✓ Cursor             → .cursor/rules/speclock.mdc
-  ✓ Claude Code        → CLAUDE.md
-  ✓ AGENTS.md          → AGENTS.md (Linux Foundation standard)
-  ✓ Windsurf           → .windsurf/rules/speclock.md
-  ✓ GitHub Copilot     → .github/copilot-instructions.md
-  ✓ Gemini             → GEMINI.md
-  ✓ Aider              → .aider.conf.yml
-
-7 file(s) synced. Your AI tools will now see SpecLock constraints.
-```
-
-Stop maintaining 3 separate rules files. Define constraints once in SpecLock, sync everywhere.
-
-```bash
-speclock sync --format cursor    # Sync to Cursor only
-speclock sync --preview claude   # Preview without writing
-speclock sync --list             # Show all supported formats
-```
-
----
-
-## Incident Replay (v5.3)
-
-Flight recorder for your AI coding sessions. See exactly what happened:
-
-```bash
-speclock replay
-
-Session: ses_a1b2c3 (claude-code, 47 min)
-────────────────────────────────────────────
-14:02  [ALLOW]   Create user profile component
-14:08  [ALLOW]   Add form validation
-14:15  [WARN]    Simplify authentication flow
-                 → matched lock: "Never modify auth"
-14:23  [BLOCK]   Clean up old user records
-                 → euphemism detected: "clean up" = deletion
-14:31  [ALLOW]   Update landing page hero section
-
-Score: 5 events | 3 allowed | 1 warned | 1 BLOCKED
-```
-
-```bash
-speclock replay --list           # List available sessions
-speclock replay --session <id>   # Replay specific session
-```
-
----
-
-## Safety Templates (v5.3)
-
-Pre-built constraint packs for common scenarios:
-
-```bash
-speclock template apply safe-defaults   # 5 locks — "Vibe Coding Seatbelt"
-speclock template apply solo-founder    # 3 locks — auth, payments, data
-speclock template apply hipaa           # 8 locks — HIPAA healthcare
-speclock template apply api-stability   # 6 locks — API contract protection
-```
-
-**Safe Defaults** prevents the 5 most common AI disasters:
-1. Database deletion
-2. Auth removal
-3. Secret exposure
-4. Error handling removal
-5. Logging disablement
-
-One command. Instant protection. `npx speclock setup --template safe-defaults`
-
----
-
-## Drift Score (v5.4)
-
-How much has your AI-built project drifted from your original intent? Only SpecLock can answer this — because only SpecLock knows what was *intended* vs what was *done*.
-
-```bash
-$ speclock drift
-
-Drift Score: 23/100 (B) — minor drift
-Trend: improving | Period: 30 days | Active locks: 8
-
-Signal Breakdown:
-  Violations:      6/30  (4 violations in 12 checks)
-  Overrides:       5/20  (1 override)
-  Reverts:         3/15  (1 revert detected)
-  Lock churn:      0/15  (0 removed, 3 added)
-  Goal stability:  0/10  (1 goal change)
-  Session gaps:    9/10  (3/5 unsummarized)
-
-README badge: ![Drift Score](https://img.shields.io/badge/drift_score-23%2F100-brightgreen.svg)
-```
-
-Put the badge in your README. Show the world your AI respects your architecture.
-
----
-
-## Lock Coverage Audit (v5.4)
-
-SpecLock scans your codebase and tells you what's **unprotected**:
-
-```bash
-$ speclock coverage
-
-Lock Coverage: 60% (B) — partially protected
-
-  [COVERED] CRITICAL authentication   2 file(s)
-  [EXPOSED] CRITICAL payments         1 file(s)
-  [COVERED] CRITICAL secrets          0 file(s)
-  [COVERED] HIGH     api-routes       2 file(s)
-
-Suggested Locks (ready to apply):
-  1. [CRITICAL] payments (1 file at risk)
-     speclock lock "Never modify payment processing or billing without permission"
-```
-
-Like a security scanner, but for AI constraint gaps. Solo founders building fast don't know what they haven't protected — SpecLock tells them.
-
----
-
-## Lock Strengthener (v5.4)
-
-Your locks might be too vague. SpecLock grades each one and suggests improvements:
-
-```bash
-$ speclock strengthen
-
-Lock Strength: 72/100 (B) — 3 strong, 1 weak
-
-[WEAK  ] 45/100 (D)  "don't touch auth"
-          Issue: Too vague — short locks miss edge cases
-          Issue: No specific scope
-          Suggested: "Never modify, refactor, or delete auth..."
-
-[STRONG] 90/100 (A)  "Never expose API keys in client-side code, logs, or error messages"
-```
 
 ---
 
@@ -400,172 +268,6 @@ rules:
 ```
 
 Import and export policies between projects. Share constraint templates across your organization.
-
----
-
-## Spec Compiler (v5.0)
-
-Paste a PRD, README, or architecture doc — SpecLock extracts all constraints automatically:
-
-```
-Input:  "We're building a fintech app. Use React and FastAPI.
-         Never touch the auth module. Response time must stay
-         under 200ms. Payments go through Stripe."
-
-Output: 2 text locks:
-          - "Never touch the auth module"
-          - "Payments go through Stripe — don't change provider"
-        1 typed lock:
-          - response_time_ms <= 200 (numerical)
-        2 decisions:
-          - "Use React for frontend"
-          - "Use FastAPI for backend"
-```
-
-Uses Gemini Flash by default ($0.01 per 1000 compilations). No API key needed for core SpecLock — only the compiler uses LLM. Falls back gracefully if no key is set.
-
----
-
-## Code Graph (v5.0)
-
-Live dependency graph of your codebase. Parses JS/TS/Python imports.
-
-```
-$ speclock blast-radius src/core/memory.js
-
-Direct Dependents:  8 files
-Transitive Impact:  14 files (33% of codebase)
-Max Depth:          4 hops
-```
-
-**Lock-to-file mapping:** Lock "Never modify auth" → automatically maps to `src/api/auth.js`, `src/middleware/auth.js`, `src/utils/jwt.js`. No configuration needed.
-
-**Module detection:** Groups files into logical modules, tracks inter-module dependencies, identifies critical paths.
-
----
-
-## Typed Constraints (v5.0)
-
-Real-time value and state checking for autonomous systems, IoT, robotics:
-
-```javascript
-// Numerical: speed must be <= 2.0 m/s
-{ constraintType: "numerical", metric: "speed_mps", operator: "<=", value: 2.0 }
-
-// Range: temperature must stay between 20-25°C
-{ constraintType: "range", metric: "temperature_c", min: 20, max: 25 }
-
-// State: never go from armed → disarmed without approval
-{ constraintType: "state", metric: "system_mode", forbidden: [{ from: "armed", to: "disarmed" }] }
-
-// Temporal: heartbeat must occur every 30 seconds
-{ constraintType: "temporal", metric: "heartbeat_s", operator: "<=", value: 30 }
-```
-
----
-
-## Python SDK & ROS2 (v5.0)
-
-```bash
-pip install speclock-sdk
-```
-
-```python
-from speclock import SpecLock
-
-sl = SpecLock(project_root=".")
-
-# Check text constraints (semantic conflict detection)
-result = sl.check_text("Switch database to MongoDB")
-# → { has_conflict: True, conflicting_locks: [...] }
-
-# Check typed constraints (numerical/range/state/temporal)
-result = sl.check_typed(metric="speed_mps", value=3.5)
-# → violation: speed exceeds 2.0 m/s limit
-
-# Combined check (text + typed in one call)
-result = sl.check(action="Increase speed", speed_mps=3.5)
-```
-
-Uses the same `.speclock/brain.json` as the Node.js MCP server — constraints stay in sync across all environments.
-
-**ROS2 Guardian Node:** Real-time constraint enforcement for robots and autonomous systems.
-
-```yaml
-# config/constraints.yaml
-constraints:
-  - type: range
-    metric: joint_position_rad
-    min: -3.14
-    max: 3.14
-  - type: numerical
-    metric: velocity_mps
-    operator: "<="
-    value: 2.0
-  - type: state
-    metric: system_mode
-    forbidden:
-      - from: emergency_stop
-        to: autonomous
-```
-
-- Subscribes to `/joint_states`, `/cmd_vel`, `/speclock/state_transition`
-- Publishes violations to `/speclock/violations`
-- Triggers emergency stop via `/speclock/emergency_stop`
-- Checks constraints on every incoming ROS2 message at configurable rate
-
----
-
-## Patch Gateway (v5.1)
-
-One API call gates every change. Takes a description + file list, returns ALLOW/WARN/BLOCK:
-
-```
-speclock_review_patch({
-  description: "Add social login to auth page",
-  files: ["src/auth/login.js"]
-})
-
-→ { verdict: "BLOCK", riskScore: 85,
-    reasons: [{ type: "semantic_conflict", lock: "Never modify auth" }],
-    blastRadius: { impactPercent: 28.3 },
-    summary: "BLOCKED. 1 constraint conflict. 12 files affected." }
-```
-
-Combines semantic conflict detection + lock-to-file mapping + blast radius + typed constraint awareness into a single risk score (0-100).
-
----
-
-## AI Patch Firewall (v5.2)
-
-Reviews actual diffs, not just descriptions. Catches things intent review misses:
-
-```
-POST /api/v2/gateway/review-diff
-{
-  "description": "Remove password column",
-  "diff": "diff --git a/migrations/001.sql ..."
-}
-
-→ { verdict: "BLOCK",
-    reviewMode: "unified",
-    intentVerdict: "ALLOW",     ← description alone looks safe
-    diffVerdict: "BLOCK",       ← diff reveals destructive schema change
-    signals: {
-      schemaChange: { score: 12, isDestructive: true },
-      interfaceBreak: { score: 10 },
-      protectedSymbolEdit: { score: 8 },
-      dependencyDrift: { score: 5 },
-      publicApiImpact: { score: 0 }
-    },
-    recommendation: { action: "require_approval" } }
-```
-
-**Signal detection:** Interface breaks (removed/changed exports), protected symbol edits in locked zones, dependency drift (critical package add/remove), schema/migration destructive changes, public API route changes.
-
-**Hard escalation rules:** Auto-BLOCK on destructive schema changes, removed API routes, protected symbol edits, or multiple critical findings — regardless of score.
-
-**Unified review:** Merges intent (35%) + diff (65%), takes the stronger verdict. Falls back to intent-only when no diff is available.
 
 ---
 
@@ -886,7 +588,7 @@ The AI opens the file and sees:
 | Guardian (Protect) | 47 | 100% | Zero-config rule file extraction |
 | **Total** | **991** | **100%** | **19 suites, 15+ domains** |
 
-**External validation:** Claude's independent 7-suite adversarial test battery — **100/100 (100%)** on v5.5.3. Zero false positives. Zero missed violations. 15.7ms per check.
+**External validation:** Claude's independent 7-suite adversarial test battery — **100/100 (100%)** on v5.5.4. Zero false positives. Zero missed violations. 15.7ms per check.
 
 Tested across: fintech, e-commerce, IoT, healthcare, SaaS, gaming, biotech, aerospace, payments, payroll, robotics, autonomous systems, telecom, insurance, government. All 11 Indian payment gateways detected. Zero false positives on UI/cosmetic actions.
 
@@ -912,6 +614,232 @@ Tested across: fintech, e-commerce, IoT, healthcare, SaaS, gaming, biotech, aero
 
 ---
 
+## Changelog
+
+Prior-version feature tours. The Quick Start and What's New sections above cover v5.5.4 — this section preserves details on features shipped in v5.0–v5.4.
+
+### v5.4 — Drift Score, Lock Coverage, Lock Strengthener
+
+**Drift Score.** How much has your AI-built project drifted from your original intent? Only SpecLock can answer this — because only SpecLock knows what was *intended* vs what was *done*.
+
+```bash
+$ speclock drift
+
+Drift Score: 23/100 (B) — minor drift
+Trend: improving | Period: 30 days | Active locks: 8
+
+Signal Breakdown:
+  Violations:      6/30  (4 violations in 12 checks)
+  Overrides:       5/20  (1 override)
+  Reverts:         3/15  (1 revert detected)
+  Lock churn:      0/15  (0 removed, 3 added)
+  Goal stability:  0/10  (1 goal change)
+  Session gaps:    9/10  (3/5 unsummarized)
+
+README badge: ![Drift Score](https://img.shields.io/badge/drift_score-23%2F100-brightgreen.svg)
+```
+
+**Lock Coverage Audit.** SpecLock scans your codebase and tells you what's **unprotected**:
+
+```bash
+$ speclock coverage
+
+Lock Coverage: 60% (B) — partially protected
+
+  [COVERED] CRITICAL authentication   2 file(s)
+  [EXPOSED] CRITICAL payments         1 file(s)
+  [COVERED] CRITICAL secrets          0 file(s)
+  [COVERED] HIGH     api-routes       2 file(s)
+
+Suggested Locks (ready to apply):
+  1. [CRITICAL] payments (1 file at risk)
+     speclock lock "Never modify payment processing or billing without permission"
+```
+
+Like a security scanner, but for AI constraint gaps.
+
+**Lock Strengthener.** Your locks might be too vague. SpecLock grades each one and suggests improvements:
+
+```bash
+$ speclock strengthen
+
+Lock Strength: 72/100 (B) — 3 strong, 1 weak
+
+[WEAK  ] 45/100 (D)  "don't touch auth"
+          Issue: Too vague — short locks miss edge cases
+          Issue: No specific scope
+          Suggested: "Never modify, refactor, or delete auth..."
+
+[STRONG] 90/100 (A)  "Never expose API keys in client-side code, logs, or error messages"
+```
+
+### v5.3 — Universal Rules Sync, Incident Replay, Safety Templates
+
+**Universal Rules Sync.** One command syncs your SpecLock constraints to every AI coding tool:
+
+```bash
+speclock sync --all
+```
+
+```
+SpecLock Sync Complete
+  ✓ Cursor             → .cursor/rules/speclock.mdc
+  ✓ Claude Code        → CLAUDE.md
+  ✓ AGENTS.md          → AGENTS.md (Linux Foundation standard)
+  ✓ Windsurf           → .windsurf/rules/speclock.md
+  ✓ GitHub Copilot     → .github/copilot-instructions.md
+  ✓ Gemini             → GEMINI.md
+  ✓ Aider              → .aider.conf.yml
+
+7 file(s) synced.
+```
+
+Define constraints once in SpecLock, sync everywhere. `--format cursor` for single format, `--preview` to dry-run, `--list` to see supported formats.
+
+**Incident Replay.** Flight recorder for your AI coding sessions:
+
+```bash
+speclock replay
+
+Session: ses_a1b2c3 (claude-code, 47 min)
+────────────────────────────────────────────
+14:02  [ALLOW]   Create user profile component
+14:08  [ALLOW]   Add form validation
+14:15  [WARN]    Simplify authentication flow
+                 → matched lock: "Never modify auth"
+14:23  [BLOCK]   Clean up old user records
+                 → euphemism detected: "clean up" = deletion
+14:31  [ALLOW]   Update landing page hero section
+
+Score: 5 events | 3 allowed | 1 warned | 1 BLOCKED
+```
+
+`speclock replay --list` lists sessions; `--session <id>` replays a specific one.
+
+**Safety Templates.** Pre-built constraint packs:
+
+```bash
+speclock template apply safe-defaults   # 5 locks — "Vibe Coding Seatbelt"
+speclock template apply solo-founder    # 3 locks — auth, payments, data
+speclock template apply hipaa           # 8 locks — HIPAA healthcare
+speclock template apply api-stability   # 6 locks — API contract protection
+```
+
+Safe Defaults prevents the 5 most common AI disasters: database deletion, auth removal, secret exposure, error-handling removal, logging disablement.
+
+### v5.2 — AI Patch Firewall
+
+Reviews actual diffs, not just descriptions. Catches things intent review misses:
+
+```
+POST /api/v2/gateway/review-diff
+{
+  "description": "Remove password column",
+  "diff": "diff --git a/migrations/001.sql ..."
+}
+
+→ { verdict: "BLOCK",
+    reviewMode: "unified",
+    intentVerdict: "ALLOW",     ← description alone looks safe
+    diffVerdict: "BLOCK",       ← diff reveals destructive schema change
+    signals: {
+      schemaChange: { score: 12, isDestructive: true },
+      interfaceBreak: { score: 10 },
+      protectedSymbolEdit: { score: 8 },
+      dependencyDrift: { score: 5 },
+      publicApiImpact: { score: 0 }
+    },
+    recommendation: { action: "require_approval" } }
+```
+
+**Signal detection:** interface breaks, protected symbol edits in locked zones, dependency drift, schema/migration destructive changes, public API route changes. **Hard escalation:** auto-BLOCK on destructive schema changes, removed API routes, protected symbol edits. **Unified review:** merges intent (35%) + diff (65%), takes the stronger verdict.
+
+### v5.1 — Patch Gateway
+
+One API call gates every change. Takes a description + file list, returns ALLOW/WARN/BLOCK:
+
+```
+speclock_review_patch({
+  description: "Add social login to auth page",
+  files: ["src/auth/login.js"]
+})
+
+→ { verdict: "BLOCK", riskScore: 85,
+    reasons: [{ type: "semantic_conflict", lock: "Never modify auth" }],
+    blastRadius: { impactPercent: 28.3 },
+    summary: "BLOCKED. 1 constraint conflict. 12 files affected." }
+```
+
+Combines semantic conflict detection + lock-to-file mapping + blast radius + typed constraint awareness into a single risk score (0-100).
+
+### v5.0 — Spec Compiler, Code Graph, Typed Constraints, Python SDK & ROS2
+
+**Spec Compiler.** Paste a PRD, README, or architecture doc — SpecLock extracts all constraints automatically:
+
+```
+Input:  "We're building a fintech app. Use React and FastAPI.
+         Never touch the auth module. Response time must stay
+         under 200ms. Payments go through Stripe."
+
+Output: 2 text locks:
+          - "Never touch the auth module"
+          - "Payments go through Stripe — don't change provider"
+        1 typed lock:
+          - response_time_ms <= 200 (numerical)
+        2 decisions:
+          - "Use React for frontend"
+          - "Use FastAPI for backend"
+```
+
+Uses Gemini Flash by default ($0.01 per 1000 compilations).
+
+**Code Graph.** Live dependency graph of your codebase. Parses JS/TS/Python imports.
+
+```
+$ speclock blast-radius src/core/memory.js
+
+Direct Dependents:  8 files
+Transitive Impact:  14 files (33% of codebase)
+Max Depth:          4 hops
+```
+
+Lock-to-file mapping auto-maps locks to source files; module detection groups files into logical modules.
+
+**Typed Constraints.** Real-time value and state checking for autonomous systems, IoT, robotics:
+
+```javascript
+// Numerical: speed must be <= 2.0 m/s
+{ constraintType: "numerical", metric: "speed_mps", operator: "<=", value: 2.0 }
+
+// Range: temperature must stay between 20-25°C
+{ constraintType: "range", metric: "temperature_c", min: 20, max: 25 }
+
+// State: never go from armed → disarmed without approval
+{ constraintType: "state", metric: "system_mode", forbidden: [{ from: "armed", to: "disarmed" }] }
+
+// Temporal: heartbeat must occur every 30 seconds
+{ constraintType: "temporal", metric: "heartbeat_s", operator: "<=", value: 30 }
+```
+
+**Python SDK & ROS2.**
+
+```bash
+pip install speclock-sdk
+```
+
+```python
+from speclock import SpecLock
+
+sl = SpecLock(project_root=".")
+result = sl.check_text("Switch database to MongoDB")
+result = sl.check_typed(metric="speed_mps", value=3.5)
+result = sl.check(action="Increase speed", speed_mps=3.5)
+```
+
+Uses the same `.speclock/brain.json` as the Node.js MCP server. ROS2 Guardian Node subscribes to `/joint_states`, `/cmd_vel`, `/speclock/state_transition`; publishes violations to `/speclock/violations`; triggers emergency stop via `/speclock/emergency_stop`.
+
+---
+
 ## Contributing
 
 Issues and PRs welcome on [GitHub](https://github.com/sgroy10/speclock).
@@ -931,4 +859,4 @@ Sandeep Roy is the sole developer of SpecLock — the AI Constraint Engine that 
 
 ---
 
-<p align="center"><i>SpecLock v5.5.3 — Your AI has rules. SpecLock makes them unbreakable. 991 tests, 100% pass rate, 51 MCP tools, Zero-config Guardian Mode, Universal Rules Sync, AI Patch Firewall, Drift Score. Developed by Sandeep Roy.</i></p>
+<p align="center"><i>SpecLock v5.5.4 — Your AI has rules. SpecLock makes them unbreakable. 991 tests, 100% pass rate, 51 MCP tools, Default WARN mode, MCP Autoinstaller, Greenfield support, Doctor health check. Developed by Sandeep Roy.</i></p>
