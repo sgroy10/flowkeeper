@@ -13,6 +13,12 @@
     <priority>0.95</priority>
   </url>
   <url>
+    <loc>https://sgroy10.github.io/speclock/hall-of-fame.html</loc>
+    <lastmod>2026-04-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
     <loc>https://github.com/sgroy10/speclock</loc>
     <lastmod>2026-04-09</lastmod>
     <changefreq>weekly</changefreq>
