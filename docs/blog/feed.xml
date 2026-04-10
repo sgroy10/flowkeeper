@@ -8,8 +8,41 @@
     <language>en-us</language>
     <managingEditor>sandeep@speclock.dev (Sandeep Roy)</managingEditor>
     <webMaster>sandeep@speclock.dev (Sandeep Roy)</webMaster>
-    <lastBuildDate>Thu, 09 Apr 2026 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Fri, 10 Apr 2026 12:00:00 +0000</lastBuildDate>
     <generator>SpecLock static feed</generator>
+
+    <item>
+      <title>10 MCP Tools Worth Installing from the Official MCP Registry (April 2026)</title>
+      <link>https://sgroy10.github.io/speclock/blog/anthropic-mcp-registry-tools.html</link>
+      <guid isPermaLink="true">https://sgroy10.github.io/speclock/blog/anthropic-mcp-registry-tools.html</guid>
+      <pubDate>Fri, 10 Apr 2026 11:00:00 +0000</pubDate>
+      <dc:creator>Sandeep Roy</dc:creator>
+      <description><![CDATA[Honest picks from the official MCP Registry: 10 Model Context Protocol servers actually worth installing in April 2026. Filesystem, github, sqlite, fetch, sequential-thinking, SpecLock and more with install commands.]]></description>
+      <category>MCP</category>
+      <category>AI Tools</category>
+    </item>
+
+    <item>
+      <title>The Best Pre-Commit Hook for AI-Generated Code in 2026</title>
+      <link>https://sgroy10.github.io/speclock/blog/ai-pre-commit-hook-2026.html</link>
+      <guid isPermaLink="true">https://sgroy10.github.io/speclock/blog/ai-pre-commit-hook-2026.html</guid>
+      <pubDate>Fri, 10 Apr 2026 10:30:00 +0000</pubDate>
+      <dc:creator>Sandeep Roy</dc:creator>
+      <description><![CDATA[Honest comparison: husky, lefthook, pre-commit, custom shell scripts, and SpecLock for AI-generated code. What each tool catches, what it misses, and the recommended 2026 stack.]]></description>
+      <category>Pre-Commit</category>
+      <category>AI Coding Safety</category>
+    </item>
+
+    <item>
+      <title>Why Pre-Commit Hooks Beat Rules Files for AI Coding Tools</title>
+      <link>https://sgroy10.github.io/speclock/blog/hooks-vs-rules-files.html</link>
+      <guid isPermaLink="true">https://sgroy10.github.io/speclock/blog/hooks-vs-rules-files.html</guid>
+      <pubDate>Fri, 10 Apr 2026 10:00:00 +0000</pubDate>
+      <dc:creator>Sandeep Roy</dc:creator>
+      <description><![CDATA[Claude Code hooks with exit 2 are the only mechanism that actually enforces your rules. The layered model of CLAUDE.md (guidance), permissions (chain-link fence), and hooks (wall) — and how SpecLock automates the enforcement layer.]]></description>
+      <category>Claude Code</category>
+      <category>Hooks</category>
+    </item>
 
     <item>
       <title>I Ran Claude Code on 50 Repos For a Month — Here's Every Time It Ignored CLAUDE.md</title>

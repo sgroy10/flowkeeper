@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10 MCP Tools Worth Installing from the Official MCP Registry (April 2026) | SpecLock</title>
+    <meta name="description" content="Honest picks from the official MCP Registry: 10 Model Context Protocol servers actually worth installing in April 2026. What each one does, who it's for, and how to install.">
+    <meta name="keywords" content="best MCP servers, official MCP registry tools, MCP server recommendations, model context protocol, claude mcp, anthropic mcp registry">
+    <meta property="og:title" content="10 MCP Tools Worth Installing from the Official MCP Registry (April 2026)">
+    <meta property="og:description" content="Honest picks from the MCP Registry: 10 servers actually worth installing. Filesystem, github, sqlite, fetch, sequential-thinking, SpecLock and more.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://sgroy10.github.io/speclock/blog/anthropic-mcp-registry-tools.html">
+    <meta property="article:published_time" content="2026-04-10">
+    <meta property="article:author" content="Sandeep Roy">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="10 MCP Tools Worth Installing from the Official MCP Registry (April 2026)">
+    <meta name="twitter:description" content="Honest picks: 10 MCP servers actually worth installing in April 2026. What each does and how to wire them up.">
+    <link rel="canonical" href="https://sgroy10.github.io/speclock/blog/anthropic-mcp-registry-tools.html">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F512;</text></svg>">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "10 MCP Tools Worth Installing from the Official MCP Registry (April 2026)",
+        "description": "Honest picks from the official MCP Registry: 10 Model Context Protocol servers actually worth installing in April 2026, with install commands and use cases.",
+        "author": {
+            "@type": "Person",
+            "name": "Sandeep Roy",
+            "url": "https://github.com/sgroy10"
+        },
+        "datePublished": "2026-04-10",
+        "dateModified": "2026-04-10",
+        "publisher": {
+            "@type": "Organization",
+            "name": "SpecLock",
+            "url": "https://sgroy10.github.io/speclock/"
+        },
+        "mainEntityOfPage": "https://sgroy10.github.io/speclock/blog/anthropic-mcp-registry-tools.html",
+        "keywords": "best MCP servers, MCP registry, model context protocol tools"
+    }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #ffffff; --surface: #f8f9fb; --border: #e2e5ea; --text: #1a1d23; --text-dim: #6b7280; --accent: #e53e3e; --accent-light: #fee2e2; --green: #16a34a; --green-light: #dcfce7; --code-bg: #1e293b; --code-text: #e2e8f0; --yellow: #f59e0b; --yellow-light: #fef3c7; --blue: #2563eb; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 14px 40px; display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+        nav a { text-decoration: none; color: var(--text); }
+        .nav-logo { font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; }
+        .nav-links { display: flex; gap: 24px; align-items: center; }
+        .nav-links a { font-size: 0.9rem; font-weight: 500; color: var(--text-dim); transition: color 0.2s; }
+        .nav-links a:hover { color: var(--accent); }
+        article { max-width: 760px; margin: 0 auto; padding: 120px 24px 80px; }
+        h1 { font-size: 2.3rem; font-weight: 800; margin-bottom: 16px; line-height: 1.15; letter-spacing: -0.02em; }
+        .meta { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 40px; }
+        h2 { font-size: 1.5rem; font-weight: 700; margin: 44px 0 18px; letter-spacing: -0.01em; }
+        h3 { font-size: 1.18rem; font-weight: 600; margin: 32px 0 12px; }
+        p { margin-bottom: 18px; font-size: 1.04rem; }
+        pre { background: var(--code-bg); color: var(--code-text); padding: 20px 22px; border-radius: 10px; overflow-x: auto; margin: 18px 0; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.55; }
+        code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; }
+        p code, li code { background: var(--surface); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); }
+        ul, ol { margin: 0 0 18px 24px; }
+        li { margin-bottom: 10px; font-size: 1.02rem; }
+        blockquote { border-left: 3px solid var(--accent); padding: 14px 22px; margin: 22px 0; background: var(--accent-light); border-radius: 0 8px 8px 0; font-style: italic; }
+        .cta-box { margin: 48px 0; padding: 32px; background: var(--surface); border-radius: 12px; text-align: center; border: 1px solid var(--border); }
+        .cta-box h3 { margin: 0 0 12px; }
+        .cta-code { display: inline-block; margin-top: 12px; padding: 12px 28px; background: var(--code-bg); color: var(--code-text); border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 1rem; }
+        .success-box { background: var(--green-light); border: 1px solid var(--green); padding: 16px 20px; border-radius: 8px; margin: 20px 0; }
+        .warning-box { background: var(--yellow-light); border: 1px solid var(--yellow); padding: 16px 20px; border-radius: 8px; margin: 20px 0; }
+        .tool-entry { border: 1px solid var(--border); border-radius: 12px; padding: 26px 30px; margin: 28px 0; background: var(--surface); }
+        .tool-entry h2 { margin-top: 0; display: flex; align-items: center; gap: 10px; }
+        .tool-num { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: var(--accent); color: white; border-radius: 50%; font-size: 0.95rem; font-weight: 800; flex-shrink: 0; }
+        .tool-meta { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 12px; font-family: 'JetBrains Mono', monospace; }
+        .featured { border: 2px solid var(--accent); background: linear-gradient(180deg, #fff 0%, var(--accent-light) 100%); }
+        .featured .tool-num { background: var(--accent); }
+        .best-for { font-size: 0.88rem; color: var(--text-dim); font-style: italic; margin-bottom: 12px; }
+        footer { text-align: center; padding: 40px 24px; color: var(--text-dim); font-size: 0.85rem; border-top: 1px solid var(--border); }
+        footer a { color: var(--accent); text-decoration: none; }
+        a { color: var(--accent); }
+        @media (max-width: 640px) { h1 { font-size: 1.7rem; } article { padding: 100px 16px 60px; } nav { padding: 14px 16px; } .tool-entry { padding: 20px; } }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="https://sgroy10.github.io/speclock/" class="nav-logo">&#x1F512; SpecLock</a>
+        <div class="nav-links">
+            <a href="index.html">Blog</a>
+            <a href="https://github.com/sgroy10/speclock">GitHub</a>
+            <a href="https://www.npmjs.com/package/speclock">npm</a>
+        </div>
+    </nav>
+    <article>
+        <h1>10 MCP Tools Worth Installing from the Official MCP Registry (April 2026)</h1>
+        <div class="meta">By Sandeep Roy &middot; April 10, 2026 &middot; 11 min read</div>
+
+        <p>The official <a href="https://github.com/modelcontextprotocol/servers">Model Context Protocol registry</a> now has hundreds of entries. Most of them are abandoned, duplicates, or toy demos. A small number are genuinely useful. This is the curated list I actually install into every Claude Code and Cursor profile in April 2026 &mdash; with install commands, honest trade-offs, and no filler.</p>
+
+        <p>Full disclosure: I maintain <a href="https://github.com/sgroy10/speclock">SpecLock</a>, which is #1 on this list. I'll explain why it's #1 in the entry itself, but I want to flag it here so you can calibrate. The other nine are tools I use every day and would list even if I had no stake in the game. If a tool on this list breaks or becomes irrelevant, email me and I'll update the post.</p>
+
+        <blockquote>"Pick your MCP servers like you pick your dependencies: as few as possible, each one pulling weight, zero that you forgot why you installed."</blockquote>
+
+        <h2>How I Chose</h2>
+
+        <p>Three criteria:</p>
+
+        <ol>
+            <li><strong>Actually maintained.</strong> Last commit within 60 days. No "last updated 2024" zombies.</li>
+            <li><strong>Solves a real problem.</strong> Not "demonstrates MCP works." Real utility in a real workflow.</li>
+            <li><strong>Install takes under 2 minutes.</strong> If I have to debug JSON config for an hour, it's not worth it.</li>
+        </ol>
+
+        <div class="tool-entry featured">
+            <h2><span class="tool-num">1</span>SpecLock &mdash; AI Constraint Engine</h2>
+            <div class="tool-meta">npm: <code>speclock</code> &middot; tools: 51 &middot; author: Sandeep Roy</div>
+            <p class="best-for">Best for: anyone using AI coding tools who wants their CLAUDE.md / .cursorrules rules to actually be enforced.</p>
+            <p>SpecLock reads your <code>CLAUDE.md</code>, <code>.cursorrules</code>, and <code>AGENTS.md</code> files and compiles them into typed constraints that get enforced semantically on every tool use and every git commit. It catches framework swaps, silent deletions, euphemism cloaking ("clean up" &rarr; DELETE), compound-hiding, and temporal evasion ("temporarily disable auth"). 51 MCP tools covering conflict detection, drift scoring, blast-radius analysis, patch review, override logging, and compliance export.</p>
+            <p>Why it's #1: every other tool on this list makes your AI agent <em>more powerful</em>. SpecLock is the only one that makes your AI agent <em>safer</em>. If you're adding filesystem, github, and sqlite access to an AI coding tool, you're handing it a loaded gun. SpecLock is the trigger discipline. Install it first, install the others second.</p>
+            <pre>npx speclock mcp install claude-code
+# or: npx speclock mcp install cursor
+# or: npx speclock mcp install all</pre>
+            <p>Heuristic engine is free, offline-capable, MIT-licensed. Optional Gemini hybrid detection costs roughly $0.01 per 1,000 checks. 985+ tests, 42+ MCP tools in the current release.</p>
+        </div>
+
+        <div class="tool-entry">
+            <h2><span class="tool-num">2</span>filesystem &mdash; Official Reference</h2>
+            <div class="tool-meta">package: <code>@modelcontextprotocol/server-filesystem</code> &middot; author: Anthropic</div>
+            <p class="best-for">Best for: giving Claude Desktop or other non-Claude-Code clients scoped file access.</p>
+            <p>The reference filesystem server. Exposes a configured set of directories with read, write, list, search, and move tools. The permission model is path-based &mdash; you specify allowed roots at startup and the server refuses to touch anything outside them.</p>
+            <p>If you're using Claude Code, you already have native file access and probably don't need this. It shines in Claude Desktop and other MCP clients that don't ship a built-in file tool. Install it once, scope it narrowly, and stop copy-pasting file contents into chat.</p>
+            <pre>{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/you/projects"
+      ]
+    }
+  }
+}</pre>
+            <p><strong>Warning:</strong> scope it narrowly. Giving an MCP filesystem server access to your entire home directory is the kind of mistake that lands in a post-mortem. Allow only the repo roots you actively work in.</p>
+        </div>
+
+        <div class="tool-entry">
+            <h2><span class="tool-num">3</span>memory &mdash; Knowledge Graph Memory</h2>
+            <div class="tool-meta">package: <code>@modelcontextprotocol/server-memory</code> &middot; author: Anthropic</div>
+            <p class="best-for">Best for: long-running assistant contexts where facts about the user/project matter across sessions.</p>
+            <p>A lightweight knowledge graph that the model can read and write. Entities, relations, observations. Facts persist to a local JSON file between sessions. The model learns "Sandeep prefers TypeScript" once, remembers forever.</p>
+            <p>Honest note: SpecLock's context pack partly overlaps with this for coding-specific decisions (goal, locks, decisions, recent changes). Memory is broader-purpose and more general. If you want free-form "things to remember about the user," install memory. If you want structured engineering constraints, use SpecLock. Both fine, different problems.</p>
+            <pre>{
+  "memory": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-memory"]
+  }
+}</pre>
+        </div>
+
+        <div class="tool-entry">
+            <h2><span class="tool-num">4</span>github &mdash; Official GitHub Integration</h2>
+            <div class="tool-meta">package: <code>@modelcontextprotocol/server-github</code> &middot; author: Anthropic</div>
+            <p class="best-for">Best for: issue triage, PR review summaries, cross-repo search without leaving your editor.</p>
+            <p>Exposes the GitHub REST API through MCP. Create issues, comment on PRs, read repo content, search code, list workflow runs. Authentication via personal access token. Scoped tokens work &mdash; give it the minimum permissions the workflow needs.</p>
+            <p>This is the MCP server I use most after SpecLock. "Summarise the last 20 issues on repo X and cluster them by theme" goes from a 30-minute task to a 10-second prompt. "Find every PR that touched this file in the last year and show the review comments" becomes trivial.</p>
+            <pre>{
+  "github": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-github"],
+    "env": {
+      "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."
+    }
+  }
+}</pre>
+            <p>Scope the token aggressively. Don't hand an MCP server a token with <code>admin:org</code> unless you actually need it.</p>
+        </div>
+
+        <div class="tool-entry">
+            <h2><span class="tool-num">5</span>sqlite &mdash; Local Database Access</h2>
+            <div class="tool-meta">package: <code>@modelcontextprotocol/server-sqlite</code> &middot; author: Anthropic</div>
+            <p class="best-for">Best for: ad-hoc data exploration, prototyping, log analysis, any workflow where SQL is faster than writing a script.</p>
+            <p>Connects to a local SQLite database and exposes query, list-tables, describe-schema, and execute tools. The AI can now explore your data the way a competent analyst would &mdash; start with the schema, sample the tables, write a query, iterate. Much better than "paste this CSV into chat."</p>
+            <p>I use this constantly for log triage. Dump nginx access logs into a SQLite table, connect the MCP server, and ask "what's the distribution of 500s by endpoint over the last hour." You get the answer in one prompt instead of a shell pipeline you have to debug.</p>
+            <pre>{
+  "sqlite": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-sqlite", "/path/to/db.sqlite"]
+  }
+}</pre>
+            <p><strong>Warning:</strong> if the database is production, configure read-only. If you've locked "never delete customer records" in SpecLock, the combination is safe. Without SpecLock, a distracted agent can <code>DROP TABLE</code> you.</p>
+        </div>
+
+        <div class="tool-entry">
+            <h2><span class="tool-num">6</span>fetch &mdash; Web Content Retrieval</h2>
+            <div class="tool-meta">package: <code>@modelcontextprotocol/server-fetch</code> &middot; author: Anthropic</div>
+            <p class="best-for">Best for: pulling in documentation pages, API specs, and blog posts the model hasn't seen.</p>
+            <p>A minimal fetcher that takes a URL, retrieves the page, strips the HTML, and returns clean markdown the model can read. No JavaScript execution, no browser automation &mdash; just HTTP GET and parse. That's the whole feature and that's why it works.</p>
+            <p>Use case that changed my workflow: I ask Claude to implement a library I haven't used before. It fetches the docs page, reads the API surface, and writes correct code on the first try instead of hallucinating method names. The knowledge cutoff becomes much less of a problem when the model can look things up.</p>
+            <pre>{
+  "fetch": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-fetch"]
+  }
+}</pre>
+        </div>
+
+        <div class="tool-entry">
+            <h2><span class="tool-num">7</span>brave-search &mdash; Web Search API</h2>
+            <div class="tool-meta">package: <code>@modelcontextprotocol/server-brave-search</code> &middot; author: Anthropic</div>
+            <p class="best-for">Best for: giving the model a search engine when fetch isn't enough (i.e. when you don't know the URL).</p>
+            <p>Wraps the Brave Search API for web and local search. You need a Brave API key (free tier: 2,000 queries/month, which is plenty for personal use). The combination of brave-search (to find the URL) plus fetch (to read it) gives the model something very close to general web access, scoped to on-demand use instead of autonomous browsing.</p>
+            <p>Brave over Google: no API-key-for-pay-to-play, cleaner terms, respectable result quality in 2026. Kagi is also worth considering if you already pay for it.</p>
+            <pre>{
+  "brave-search": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+    "env": { "BRAVE_API_KEY": "..." }
+  }
+}</pre>
+        </div>
+
+        <div class="tool-entry">
+            <h2><span class="tool-num">8</span>sequential-thinking &mdash; Structured Reasoning</h2>
+            <div class="tool-meta">package: <code>@modelcontextprotocol/server-sequential-thinking</code> &middot; author: Anthropic</div>
+            <p class="best-for">Best for: complex planning tasks where the model benefits from explicit multi-step thought structure.</p>
+            <p>Exposes a <code>think</code> tool that lets the model produce a structured chain of thoughts before acting &mdash; revisable, branchable, with explicit "I was wrong about step 3" correction support. It's a simple idea with a surprisingly big effect on hard problems.</p>
+            <p>I don't install this everywhere &mdash; it adds a lot of token overhead. But for architecture-level planning sessions ("design the data model for a multi-tenant SaaS with these five constraints"), it measurably improves coherence. Install selectively, not by default.</p>
+            <pre>{
+  "sequential-thinking": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+  }
+}</pre>
+        </div>
+
+        <div class="tool-entry">
+            <h2><span class="tool-num">9</span>puppeteer &mdash; Browser Automation</h2>
+            <div class="tool-meta">package: <code>@modelcontextprotocol/server-puppeteer</code> &middot; author: Anthropic</div>
+            <p class="best-for">Best for: scraping JS-heavy pages, visual regression checks, "screenshot this URL and describe what's wrong."</p>
+            <p>Runs a headless Chromium instance that the model can drive. Navigate, click, fill forms, take screenshots, evaluate JS in the page. The fetch server handles static HTML; puppeteer handles anything with JavaScript.</p>
+            <p>Use case I hit weekly: "visit my deployed preview URL, take a screenshot, and tell me if the button styling broke." The model sees the actual rendered page. Catches CSS regressions that unit tests miss. Also good for quick scraping when you need data that lives behind a JS-rendered grid.</p>
+            <pre>{
+  "puppeteer": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+  }
+}</pre>
+            <p><strong>Heavy install:</strong> puppeteer pulls a Chromium binary (~200 MB). Worth it, but know what you're getting.</p>
+        </div>
+
+        <div class="tool-entry">
+            <h2><span class="tool-num">10</span>time &mdash; Current Time and Timezone Conversion</h2>
+            <div class="tool-meta">package: <code>@modelcontextprotocol/server-time</code> &middot; author: Anthropic</div>
+            <p class="best-for">Best for: fixing the single most persistent bug in LLMs &mdash; they don't know what day it is.</p>
+            <p>The smallest entry on this list and somehow one of the most useful. Exposes current time, timezone conversion, and relative-time formatting. The model asks "what time is it" and gets an actual answer instead of guessing based on training cutoff.</p>
+            <p>Every AI coding tool I've used has at least once written "the current year is 2024" when it isn't. time server fixes that permanently. Zero overhead, one-line install, stops a whole class of embarrassing mistakes.</p>
+            <pre>{
+  "time": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-time"]
+  }
+}</pre>
+        </div>
+
+        <h2>Honourable Mentions</h2>
+
+        <p>Three servers that almost made the cut but I use less frequently or with reservations:</p>
+
+        <ul>
+            <li><strong>postgres</strong> &mdash; Excellent when you need it, but setup is heavier than sqlite and it's easier to break production. Use with SpecLock's read-only lock pattern.</li>
+            <li><strong>slack</strong> &mdash; Great for "summarize my unread messages," but the auth flow is finicky and I don't trust an LLM with DM access by default.</li>
+            <li><strong>google-drive</strong> &mdash; Useful if you live in Google Docs. OAuth flow is the price of admission.</li>
+        </ul>
+
+        <h2>The Install-Order Argument</h2>
+
+        <div class="success-box">
+            <strong>Recommended install order for a fresh Claude Code profile:</strong><br>
+            1. SpecLock (constraint enforcement &mdash; install <em>before</em> giving the agent new powers)<br>
+            2. filesystem (scoped to your project roots)<br>
+            3. github (scoped token)<br>
+            4. fetch + brave-search (web access pair)<br>
+            5. sqlite (for any data-heavy work)<br>
+            6. time (always)<br>
+            7. Everything else on demand.
+        </div>
+
+        <p>The reason SpecLock goes first is the same reason you lock the gun cabinet before handing out bullets. Each MCP server on this list expands what the AI can touch &mdash; files, databases, the web, GitHub. Expanding blast radius without expanding enforcement is how accidents happen. SpecLock is the enforcement layer that makes the rest of the toolkit safe to use.</p>
+
+        <div class="warning-box">
+            <strong>What I did not include, and why:</strong> I skipped every "agent framework" server (there are dozens, most are abandoned), every "cool demo but no maintenance" server, and every server whose README is longer than its source code. The list above is what I actually run. If you think I missed something great, tell me &mdash; I'll test it and update.
+        </div>
+
+        <h2>Wiring It All Up</h2>
+
+        <p>Here's the minimal Claude Code settings file I start from when configuring a new machine. Copy it, fill in the env vars, and you're running the top six in 60 seconds:</p>
+
+        <pre>{
+  "mcpServers": {
+    "speclock": {
+      "command": "npx",
+      "args": ["-y", "speclock", "mcp", "start"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/you/code"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..." }
+    },
+    "fetch": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"]
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "env": { "BRAVE_API_KEY": "..." }
+    },
+    "time": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-time"]
+    }
+  }
+}</pre>
+
+        <p>Or, for the SpecLock portion specifically, use the autoinstaller that detects your client's config file and merges cleanly:</p>
+
+        <pre>npx speclock mcp install claude-code   # or cursor, windsurf, cline, codex, all</pre>
+
+        <h2>Closing Thought</h2>
+
+        <p>MCP is having a moment because it solves a real problem: LLMs are smart, but they're boxed in by their context. Every server on this list punches a hole in that box in a useful direction. More file access, more API access, more web access, more tools. All of it good.</p>
+
+        <p>But the same servers that make an agent more capable also make it more dangerous. An AI with filesystem + github + sqlite + CLAUDE.md-as-suggestion is an AI that can silently delete your test suite, force-push to main, and drop a production table in the same afternoon. You need the capability layer <em>and</em> the enforcement layer. This list has both &mdash; #1 is the enforcement, #2 through #10 are the capabilities. Install accordingly.</p>
+
+        <div class="cta-box">
+            <h3>Install the safety layer before the capability layers.</h3>
+            <p>SpecLock reads your existing rules and starts enforcing in under 30 seconds.</p>
+            <div class="cta-code">npx speclock protect</div>
+            <p style="margin-top: 18px;">
+                <a href="https://github.com/sgroy10/speclock">GitHub</a> &middot;
+                <a href="https://www.npmjs.com/package/speclock">npm</a> &middot;
+                <a href="https://sgroy10.github.io/speclock/">Documentation</a>
+            </p>
+        </div>
+    </article>
+    <footer>
+        <p>SpecLock &mdash; AI Remembers. SpecLock Enforces. &middot; <a href="https://github.com/sgroy10/speclock">GitHub</a> &middot; <a href="https://www.npmjs.com/package/speclock">npm</a> &middot; <a href="https://sgroy10.github.io/speclock/">Docs</a></p>
+    </footer>
+</body>
+</html>

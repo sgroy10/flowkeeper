@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Best Pre-Commit Hook for AI-Generated Code in 2026 | SpecLock</title>
+    <meta name="description" content="Husky, lefthook, pre-commit, custom shell scripts, or SpecLock? An honest comparison of pre-commit tools for AI-generated code, including what each one can and cannot detect.">
+    <meta name="keywords" content="AI pre-commit hook, best pre-commit hook 2026, speclock alternative, husky vs lefthook, pre-commit for AI code, semantic pre-commit">
+    <meta property="og:title" content="The Best Pre-Commit Hook for AI-Generated Code in 2026">
+    <meta property="og:description" content="Honest comparison: husky, lefthook, pre-commit, custom scripts, and SpecLock. What each tool catches, what it misses, and which one to reach for.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://sgroy10.github.io/speclock/blog/ai-pre-commit-hook-2026.html">
+    <meta property="article:published_time" content="2026-04-10">
+    <meta property="article:author" content="Sandeep Roy">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="The Best Pre-Commit Hook for AI-Generated Code in 2026">
+    <meta name="twitter:description" content="Honest comparison: husky, lefthook, pre-commit, and SpecLock. What each tool catches and what it misses.">
+    <link rel="canonical" href="https://sgroy10.github.io/speclock/blog/ai-pre-commit-hook-2026.html">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F512;</text></svg>">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "The Best Pre-Commit Hook for AI-Generated Code in 2026",
+        "description": "An honest comparison of pre-commit hook tools for AI-generated code: husky, lefthook, pre-commit, custom shell scripts, and SpecLock. Strengths, weaknesses, and when to use each.",
+        "author": {
+            "@type": "Person",
+            "name": "Sandeep Roy",
+            "url": "https://github.com/sgroy10"
+        },
+        "datePublished": "2026-04-10",
+        "dateModified": "2026-04-10",
+        "publisher": {
+            "@type": "Organization",
+            "name": "SpecLock",
+            "url": "https://sgroy10.github.io/speclock/"
+        },
+        "mainEntityOfPage": "https://sgroy10.github.io/speclock/blog/ai-pre-commit-hook-2026.html",
+        "keywords": "AI pre-commit hook, best pre-commit hook 2026, speclock alternative"
+    }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #ffffff; --surface: #f8f9fb; --border: #e2e5ea; --text: #1a1d23; --text-dim: #6b7280; --accent: #e53e3e; --accent-light: #fee2e2; --green: #16a34a; --green-light: #dcfce7; --code-bg: #1e293b; --code-text: #e2e8f0; --yellow: #f59e0b; --yellow-light: #fef3c7; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 14px 40px; display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+        nav a { text-decoration: none; color: var(--text); }
+        .nav-logo { font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; }
+        .nav-links { display: flex; gap: 24px; align-items: center; }
+        .nav-links a { font-size: 0.9rem; font-weight: 500; color: var(--text-dim); transition: color 0.2s; }
+        .nav-links a:hover { color: var(--accent); }
+        article { max-width: 760px; margin: 0 auto; padding: 120px 24px 80px; }
+        h1 { font-size: 2.4rem; font-weight: 800; margin-bottom: 16px; line-height: 1.15; letter-spacing: -0.02em; }
+        .meta { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 40px; }
+        h2 { font-size: 1.55rem; font-weight: 700; margin: 44px 0 18px; letter-spacing: -0.01em; }
+        h3 { font-size: 1.18rem; font-weight: 600; margin: 32px 0 12px; }
+        p { margin-bottom: 18px; font-size: 1.04rem; }
+        pre { background: var(--code-bg); color: var(--code-text); padding: 22px 24px; border-radius: 10px; overflow-x: auto; margin: 22px 0; font-family: 'JetBrains Mono', monospace; font-size: 0.88rem; line-height: 1.55; }
+        code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; }
+        p code, li code { background: var(--surface); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); }
+        ul, ol { margin: 0 0 18px 24px; }
+        li { margin-bottom: 10px; font-size: 1.02rem; }
+        blockquote { border-left: 3px solid var(--accent); padding: 14px 22px; margin: 22px 0; background: var(--accent-light); border-radius: 0 8px 8px 0; font-style: italic; }
+        .cta-box { margin: 48px 0; padding: 32px; background: var(--surface); border-radius: 12px; text-align: center; border: 1px solid var(--border); }
+        .cta-box h3 { margin: 0 0 12px; }
+        .cta-code { display: inline-block; margin-top: 12px; padding: 12px 28px; background: var(--code-bg); color: var(--code-text); border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 1rem; }
+        .success-box { background: var(--green-light); border: 1px solid var(--green); padding: 16px 20px; border-radius: 8px; margin: 20px 0; }
+        .warning-box { background: var(--yellow-light); border: 1px solid var(--yellow); padding: 16px 20px; border-radius: 8px; margin: 20px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 0.92rem; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+        th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: var(--surface); font-weight: 700; font-size: 0.85rem; }
+        tr:last-child td { border-bottom: none; }
+        td.yes { color: var(--green); font-weight: 600; }
+        td.no { color: var(--accent); font-weight: 600; }
+        td.partial { color: var(--yellow); font-weight: 600; }
+        .tool-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin: 18px 0; }
+        .tool-card h3 { margin-top: 0; }
+        footer { text-align: center; padding: 40px 24px; color: var(--text-dim); font-size: 0.85rem; border-top: 1px solid var(--border); }
+        footer a { color: var(--accent); text-decoration: none; }
+        a { color: var(--accent); }
+        @media (max-width: 640px) { h1 { font-size: 1.75rem; } article { padding: 100px 16px 60px; } nav { padding: 14px 16px; } table { font-size: 0.8rem; } th, td { padding: 8px 6px; } }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="https://sgroy10.github.io/speclock/" class="nav-logo">&#x1F512; SpecLock</a>
+        <div class="nav-links">
+            <a href="index.html">Blog</a>
+            <a href="https://github.com/sgroy10/speclock">GitHub</a>
+            <a href="https://www.npmjs.com/package/speclock">npm</a>
+        </div>
+    </nav>
+    <article>
+        <h1>The Best Pre-Commit Hook for AI-Generated Code in 2026</h1>
+        <div class="meta">By Sandeep Roy &middot; April 10, 2026 &middot; 9 min read</div>
+
+        <p>The pre-commit hook landscape didn't change much for a decade. Then AI coding tools arrived, and suddenly the old question &mdash; "how do I stop bad code from landing?" &mdash; acquired a whole new attack surface. Traditional hooks were built to catch human mistakes: unformatted code, missing tests, lint warnings. AI hooks have to catch something different. They have to catch an intelligent agent that's allowed to type anything it wants, knows the repo structure, and will cheerfully rewrite your Express server in Fastify because your prompt said "optimize."</p>
+
+        <p>I maintain <a href="https://github.com/sgroy10/speclock">SpecLock</a>, which is one of the tools on this list. I have an obvious bias. I'm going to be as honest as I can about what each tool does well and what it doesn't &mdash; including SpecLock. If I just wrote a marketing page you'd smell it and close the tab, so let's do the real comparison.</p>
+
+        <h2>The Contenders</h2>
+
+        <p>There are five tools worth considering for a 2026 AI-heavy workflow:</p>
+
+        <ul>
+            <li><strong>husky</strong> &mdash; the default JavaScript pre-commit runner. Thin wrapper around git hooks, delegates to scripts you write.</li>
+            <li><strong>lefthook</strong> &mdash; the Go-based alternative. Faster parallel execution, YAML config, language-agnostic.</li>
+            <li><strong>pre-commit</strong> (the framework by Yelp, <code>pre-commit.com</code>) &mdash; Python-based, huge ecosystem of shared hooks, strong in Python/polyglot shops.</li>
+            <li><strong>Custom shell scripts</strong> &mdash; the zero-dependency option. Just a <code>.git/hooks/pre-commit</code> file with bash in it.</li>
+            <li><strong>SpecLock</strong> &mdash; the semantic enforcement layer for AI-generated changes. What I built, what this blog is about.</li>
+        </ul>
+
+        <h2>What Changed: The AI-Specific Failure Modes</h2>
+
+        <p>Before comparing tools, we have to agree on what we're catching. Pre-AI, the failure modes were:</p>
+
+        <ol>
+            <li><strong>Formatting drift</strong> &mdash; prettier/black/gofmt handles it.</li>
+            <li><strong>Lint violations</strong> &mdash; eslint/ruff/golangci-lint handles it.</li>
+            <li><strong>Failing tests</strong> &mdash; run the test suite.</li>
+            <li><strong>Secret leaks</strong> &mdash; gitleaks/trufflehog.</li>
+        </ol>
+
+        <p>AI tools introduced five new failure modes that none of the above detect:</p>
+
+        <ol>
+            <li><strong>Framework swaps.</strong> "Optimize the server" becomes "rewrote Express in Fastify." The code still lints, still passes tests (badly), still formats cleanly.</li>
+            <li><strong>Silent deletions.</strong> "Clean up unused code" becomes "deleted 40% of the test suite." Linter is happy. Tests that remain still pass. Coverage cratered.</li>
+            <li><strong>Euphemism cloaking.</strong> "Clean up old data" becomes <code>DROP TABLE</code>. String-match linters miss it because the diff contains SQL, not the word "delete."</li>
+            <li><strong>Scope creep.</strong> "Fix the login button" touches <code>auth/session.ts</code> and the JWT helper "while we're in there." Nothing in the traditional stack notices.</li>
+            <li><strong>Temporal evasion.</strong> "Temporarily disable auth for local testing." The temporary change ships to production and lives forever.</li>
+        </ol>
+
+        <p>Any honest comparison has to grade tools on <em>both</em> the old failure modes and the new ones. Here's that comparison.</p>
+
+        <h2>The Comparison Table</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Capability</th>
+                    <th>husky</th>
+                    <th>lefthook</th>
+                    <th>pre-commit</th>
+                    <th>Custom</th>
+                    <th>SpecLock</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Runs on git commit</td>
+                    <td class="yes">Yes</td>
+                    <td class="yes">Yes</td>
+                    <td class="yes">Yes</td>
+                    <td class="yes">Yes</td>
+                    <td class="yes">Yes</td>
+                </tr>
+                <tr>
+                    <td>Lint / format</td>
+                    <td class="yes">Via eslint</td>
+                    <td class="yes">Via eslint</td>
+                    <td class="yes">Via plugins</td>
+                    <td class="yes">If scripted</td>
+                    <td class="no">No (by design)</td>
+                </tr>
+                <tr>
+                    <td>Secret scanning</td>
+                    <td class="yes">Via gitleaks</td>
+                    <td class="yes">Via gitleaks</td>
+                    <td class="yes">Via gitleaks</td>
+                    <td class="yes">If scripted</td>
+                    <td class="no">No</td>
+                </tr>
+                <tr>
+                    <td>Parallel execution</td>
+                    <td class="no">No</td>
+                    <td class="yes">Yes</td>
+                    <td class="partial">Partial</td>
+                    <td class="no">No</td>
+                    <td class="yes">Yes</td>
+                </tr>
+                <tr>
+                    <td>Detects framework swaps</td>
+                    <td class="no">No</td>
+                    <td class="no">No</td>
+                    <td class="no">No</td>
+                    <td class="partial">If you code it</td>
+                    <td class="yes">Yes</td>
+                </tr>
+                <tr>
+                    <td>Detects euphemism cloaking</td>
+                    <td class="no">No</td>
+                    <td class="no">No</td>
+                    <td class="no">No</td>
+                    <td class="no">No</td>
+                    <td class="yes">Yes (65+ groups)</td>
+                </tr>
+                <tr>
+                    <td>Reads CLAUDE.md / .cursorrules</td>
+                    <td class="no">No</td>
+                    <td class="no">No</td>
+                    <td class="no">No</td>
+                    <td class="no">No</td>
+                    <td class="yes">Yes</td>
+                </tr>
+                <tr>
+                    <td>Semantic diff review</td>
+                    <td class="no">No</td>
+                    <td class="no">No</td>
+                    <td class="no">No</td>
+                    <td class="no">No</td>
+                    <td class="yes">Yes</td>
+                </tr>
+                <tr>
+                    <td>MCP server support</td>
+                    <td class="no">No</td>
+                    <td class="no">No</td>
+                    <td class="no">No</td>
+                    <td class="no">No</td>
+                    <td class="yes">51 tools</td>
+                </tr>
+                <tr>
+                    <td>Config complexity</td>
+                    <td class="partial">Low</td>
+                    <td class="partial">Low</td>
+                    <td class="partial">Medium</td>
+                    <td class="no">DIY</td>
+                    <td class="yes">Zero</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>The table is the summary. Let's go tool by tool and explain the nuances, because a feature matrix always flattens trade-offs.</p>
+
+        <h2>husky</h2>
+
+        <div class="tool-card">
+            <h3>The default choice for JS teams</h3>
+            <p><strong>Best for:</strong> Formatting, linting, and test running on Node projects.</p>
+            <p><strong>What it is:</strong> A lightweight wrapper around git hooks. You put commands in a config file and husky installs the hooks for you. Pairs with <code>lint-staged</code> to run only on changed files.</p>
+            <p><strong>What it doesn't do:</strong> Anything semantic. Husky is a runner, not a checker. It will happily run whatever script you give it, but it has no opinion about AI-generated code.</p>
+            <p><strong>Verdict:</strong> Keep husky. It's great at what it does. But don't pretend it's stopping AI drift. The checks it runs are the same ones that existed in 2015, and AI tools have moved past them.</p>
+        </div>
+
+        <pre>// package.json
+{
+  "scripts": {
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "*.ts": ["eslint --fix", "prettier --write"]
+  }
+}</pre>
+
+        <h2>lefthook</h2>
+
+        <div class="tool-card">
+            <h3>The speed upgrade</h3>
+            <p><strong>Best for:</strong> Teams with big monorepos where husky is too slow.</p>
+            <p><strong>What it is:</strong> A Go binary that runs git hooks in parallel. YAML config, language-agnostic, no Node dependency. Roughly 5-10x faster than husky on large changesets.</p>
+            <p><strong>What it doesn't do:</strong> Same as husky. It's a faster runner. Parallel execution doesn't add semantic understanding &mdash; it just makes the same set of checks finish sooner.</p>
+            <p><strong>Verdict:</strong> If husky feels slow, switch to lefthook. You'll get the speed win. You still need something on top for AI-specific risks.</p>
+        </div>
+
+        <h2>pre-commit (the Yelp framework)</h2>
+
+        <div class="tool-card">
+            <h3>The polyglot workhorse</h3>
+            <p><strong>Best for:</strong> Python shops, polyglot repos, teams that want shared hook ecosystems.</p>
+            <p><strong>What it is:</strong> A Python-based hook manager with the biggest shared ecosystem of any pre-commit tool. Hundreds of ready-made hooks for every language. Config is a single <code>.pre-commit-config.yaml</code>.</p>
+            <p><strong>What it doesn't do:</strong> Also generic. Same limitation &mdash; it's a runner. No AI-specific hooks exist in the ecosystem yet that catch the new failure modes semantically.</p>
+            <p><strong>Verdict:</strong> Excellent for traditional checks. Install it for the ecosystem. Still need an AI-aware layer on top.</p>
+        </div>
+
+        <h2>Custom shell scripts</h2>
+
+        <div class="tool-card">
+            <h3>The no-dependency escape hatch</h3>
+            <p><strong>Best for:</strong> Tiny projects, purist teams, or environments where you can't install new tooling.</p>
+            <p><strong>What it is:</strong> A bash script in <code>.git/hooks/pre-commit</code>. Zero dependencies, full control, zero safety net. Everything is up to you.</p>
+            <p><strong>What it doesn't do:</strong> Anything you don't write yourself. If you want AI drift detection, you're hand-coding a regex list and maintaining it forever. This falls over the moment an AI uses a synonym you didn't think of.</p>
+            <p><strong>Verdict:</strong> Fine for trivial checks. Do not try to build an AI-safe hook this way. You'll be playing whack-a-mole with English vocabulary until you quit.</p>
+        </div>
+
+        <h2>SpecLock</h2>
+
+        <div class="tool-card">
+            <h3>The semantic layer (what I built)</h3>
+            <p><strong>Best for:</strong> Any team using Claude Code, Cursor, Copilot, Cline, Windsurf, or Gemini and wanting enforcement that matches the attack surface.</p>
+            <p><strong>What it is:</strong> A pre-commit + pre-tool-use hook that reads your <code>CLAUDE.md</code>, <code>.cursorrules</code>, and <code>AGENTS.md</code>, compiles the rules into typed locks, and runs every proposed change through a semantic engine with 65+ synonym groups, 11 payment-gateway concepts, compound-sentence decomposition, temporal-evasion detection, and 80+ euphemism mappings. Also ships as an MCP server with 51 tools for deeper integration.</p>
+            <p><strong>What it doesn't do:</strong> SpecLock is not a linter. It doesn't format code. It doesn't run tests. It doesn't scan for secrets. It does one job: detect when an AI-proposed change violates a rule you declared somewhere. For the other jobs, you still want husky/lefthook/pre-commit plus eslint/gitleaks/jest. SpecLock is a layer, not a replacement.</p>
+            <p><strong>What it uniquely does:</strong> Semantic detection. Nothing else on this list understands that "sweep away old records" is the same intent as <code>DROP TABLE</code>. Nothing else reads CLAUDE.md as the source of truth. Nothing else catches framework swaps as lateral migrations. This is the one row in the table where SpecLock is alone.</p>
+        </div>
+
+        <pre>$ npx speclock protect
+&#x1F512; SpecLock installed.
+  - Read CLAUDE.md (8 rules found)
+  - Compiled 12 typed locks
+  - Installed .git/hooks/pre-commit
+  - Installed .claude/hooks/speclock-check.js
+  - MCP server registered (claude-code)
+Warning mode active. Run `speclock protect --strict` to hard-block.</pre>
+
+        <h2>The Recommended Stack for 2026</h2>
+
+        <div class="success-box">
+            <strong>What I actually run in every repo:</strong><br>
+            1. <strong>husky or lefthook</strong> as the runner (lefthook if &gt;500 files, husky otherwise).<br>
+            2. <strong>lint-staged + eslint + prettier</strong> for formatting and lint.<br>
+            3. <strong>gitleaks</strong> for secret scanning.<br>
+            4. <strong>SpecLock</strong> for semantic AI-drift enforcement.<br>
+            Total install time: under 5 minutes. Total overhead per commit: under 2 seconds.
+        </div>
+
+        <p>The stack above covers all four old failure modes and all five new ones. Each tool is doing the job it's actually good at. SpecLock does not try to replace your linter, because a linter is a better linter than I would ever write. Husky does not try to detect euphemisms because that's not what it's for. Each layer has a job.</p>
+
+        <h2>Honest Limitations of SpecLock</h2>
+
+        <div class="warning-box">
+            <strong>Where SpecLock falls short:</strong> It catches semantic violations, not syntactic ones. If your AI writes genuinely broken code &mdash; syntax errors, type errors, runtime bugs &mdash; SpecLock will not catch that; your linter, type checker, and test suite will. It also can't catch violations that don't match any lock you declared &mdash; if you never write "never delete tests" anywhere, SpecLock has nothing to enforce. And on deeply ambiguous cases (Python import aliasing tricks, rules expressed in non-English domain language), the current diff parser occasionally needs help. We measured 97.9% catch rate on a 287-violation test set, which means 2.1% slip through. Nobody is 100%.
+        </div>
+
+        <h2>Why SpecLock Exists at All</h2>
+
+        <p>I built SpecLock because I watched the other tools on this list fail to catch things I could see with my eyes. A developer shipped a framework swap at 2am because husky was happy (code formatted, lint clean, tests passing). A different developer shipped a silent test deletion because pre-commit had no concept of "tests are protected." A third shipped a temporary auth disable that lasted three months. None of these were bugs in husky or pre-commit. They were the tools doing exactly what they were designed to do &mdash; which is not this.</p>
+
+        <p>Pre-commit hooks in 2026 need a layer that thinks about what the change <em>means</em>, not just whether the code is well-formatted. That's what SpecLock is. It's the only tool on this list that reads your rules file, compiles it, and enforces it semantically. That's the row where it's alone in the table, and it's the row that matters most for AI-generated code.</p>
+
+        <div class="cta-box">
+            <h3>Add the AI layer to your existing hook stack.</h3>
+            <p>Keep husky, keep lefthook, keep your linter. Add SpecLock for the one thing none of them can do.</p>
+            <div class="cta-code">npx speclock protect</div>
+            <p style="margin-top: 18px;">
+                <a href="https://github.com/sgroy10/speclock">GitHub</a> &middot;
+                <a href="https://www.npmjs.com/package/speclock">npm</a> &middot;
+                <a href="https://sgroy10.github.io/speclock/">Documentation</a>
+            </p>
+        </div>
+    </article>
+    <footer>
+        <p>SpecLock &mdash; AI Remembers. SpecLock Enforces. &middot; <a href="https://github.com/sgroy10/speclock">GitHub</a> &middot; <a href="https://www.npmjs.com/package/speclock">npm</a> &middot; <a href="https://sgroy10.github.io/speclock/">Docs</a></p>
+    </footer>
+</body>
+</html>
