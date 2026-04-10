@@ -410,8 +410,17 @@ export function formatProtectReport(report) {
     lines.push("  Every commit will now be checked against your constraints.");
   } else if (report.hookStatus === "already installed") {
     lines.push("  Pre-commit hook: already active");
+  } else if (
+    typeof report.hookStatus === "string" &&
+    /not a git repository/i.test(report.hookStatus)
+  ) {
+    lines.push("  Pre-commit hook: SKIPPED (not a git repository)");
+    lines.push("  Tip: Run 'git init' first, then re-run 'speclock protect'.");
   } else {
-    lines.push(`  Pre-commit hook: ${report.hookStatus}`);
+    // Single-line status (e.g. "skipped (--no-hook)", "failed"); collapse any
+    // embedded newlines so the label never ends with a blank line.
+    const status = String(report.hookStatus || "").replace(/\s*\r?\n\s*/g, " — ").trim();
+    lines.push(`  Pre-commit hook: ${status || "unknown"}`);
   }
   lines.push("");
 

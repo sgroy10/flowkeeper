@@ -113,7 +113,7 @@ import { fileURLToPath } from "url";
 import _path from "path";
 
 const PROJECT_ROOT = process.env.SPECLOCK_PROJECT_ROOT || process.cwd();
-const VERSION = "5.5.6";
+const VERSION = "5.5.7";
 const AUTHOR = "Sandeep Roy";
 const START_TIME = Date.now();
 

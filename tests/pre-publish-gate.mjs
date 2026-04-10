@@ -19,6 +19,7 @@ const SUITES = [
   { file: "claude-regression-test.mjs",     name: "Claude Regression",     expected: 9 },
   { file: "pii-export-test.mjs",            name: "PII/Export Detection",  expected: 8 },
   { file: "question-framing-test.mjs",      name: "Question Framing",      expected: 9 },
+  { file: "synonym-gaps.test.mjs",          name: "Synonym Gaps",          expected: 17 },
 
   // Typed constraints & infrastructure (280 tests)
   { file: "typed-constraints.test.js",      name: "Typed Constraints",     expected: 61 },

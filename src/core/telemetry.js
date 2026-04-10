@@ -850,3 +850,91 @@ export async function ensureTelemetryDecision() {
     return false;
   }
 }
+
+// ---------------------------------------------------------------------------
+// USER-FACING USAGE STATS — surfaces the local telemetry.jsonl log back to
+// the user via `speclock stats`. No network calls, no PII, purely local.
+// ---------------------------------------------------------------------------
+
+/**
+ * Read ALL events from the local JSONL log (most recent last). Unlike
+ * readRecentEvents() this does NOT cap the list — the caller is expected to
+ * aggregate and then discard.
+ */
+export function readAllTelemetryEvents() {
+  try {
+    const p = eventsPath();
+    if (!fs.existsSync(p)) return [];
+    const raw = fs.readFileSync(p, "utf-8");
+    const lines = raw.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    return lines
+      .map((l) => {
+        try { return JSON.parse(l); } catch { return null; }
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Build a plain-data aggregate of the user's local telemetry log. Always
+ * safe to call — returns zero-filled fields when telemetry is disabled or
+ * the log is missing. The CLI `stats` command renders this; tests assert
+ * against the shape directly.
+ *
+ * @param {{ events?: Array, recentLimit?: number, now?: Date }} [opts]
+ *   - events: pre-supplied events (for tests). Defaults to reading ~/.speclock/telemetry.jsonl.
+ *   - recentLimit: how many recent events to include (default 10).
+ *   - now: clock override for deterministic tests.
+ */
+export function buildUsageStats(opts = {}) {
+  const events = Array.isArray(opts.events) ? opts.events : readAllTelemetryEvents();
+  const recentLimit = typeof opts.recentLimit === "number" ? opts.recentLimit : 10;
+  const now = opts.now instanceof Date ? opts.now : new Date();
+
+  const cfg = readTelemetryConfig();
+  const installId = getInstallId();
+
+  // First install timestamp — prefer config, fall back to earliest event.
+  let firstInstallIso = cfg.installedAt || null;
+  if (!firstInstallIso && events.length > 0) {
+    let earliest = null;
+    for (const e of events) {
+      const t = e && e.timestamp ? Date.parse(e.timestamp) : NaN;
+      if (Number.isFinite(t) && (earliest === null || t < earliest)) earliest = t;
+    }
+    if (earliest !== null) firstInstallIso = new Date(earliest).toISOString();
+  }
+
+  // Days since first install.
+  let daysActive = 0;
+  if (firstInstallIso) {
+    const t = Date.parse(firstInstallIso);
+    if (Number.isFinite(t)) {
+      daysActive = Math.max(0, Math.floor((now.getTime() - t) / (24 * 60 * 60 * 1000)));
+    }
+  }
+
+  // Commands by type.
+  const commandsByType = {};
+  for (const e of events) {
+    const cmd = (e && e.command) || "unknown";
+    commandsByType[cmd] = (commandsByType[cmd] || 0) + 1;
+  }
+
+  // Recent events (most recent last).
+  const recent = events.slice(-recentLimit);
+
+  return {
+    telemetryEnabled: isTelemetryOptedIn(),
+    installId,
+    firstInstallIso,
+    daysActive,
+    totalEvents: events.length,
+    commandsByType,
+    recentEvents: recent,
+    eventsPath: eventsPath(),
+    configPath: configPath(),
+  };
+}

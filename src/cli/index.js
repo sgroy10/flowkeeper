@@ -68,6 +68,7 @@ import {
   ensureTelemetryDecision,
   recordCommand,
   TELEMETRY_DEFAULT_ENDPOINT,
+  buildUsageStats,
 } from "../core/telemetry.js";
 import {
   isSSOEnabled,
@@ -286,7 +287,7 @@ export function initFromRulePack(root, framework) {
 
 function printHelp() {
   console.log(`
-SpecLock v5.5.6 — Your AI has rules. SpecLock makes them unbreakable.
+SpecLock v5.5.7 — Your AI has rules. SpecLock makes them unbreakable.
 Developed by Sandeep Roy (github.com/sgroy10)
 
 Usage: speclock <command> [options]
@@ -340,6 +341,7 @@ Commands:
   watch                           Start file watcher (live dashboard)
   serve [--project <path>]        Start MCP stdio server
   status                          Show project brain summary
+  stats                           Show YOUR usage dashboard from local telemetry log
   doctor                          Diagnostic health check (install, git, rules, MCP)
 
 Options:
@@ -442,6 +444,152 @@ function showStatus(root) {
   console.log("");
 }
 
+// --- Stats dashboard (speclock stats) ---
+
+/**
+ * Build a self-contained view-model for the `speclock stats` dashboard.
+ * Pure data — no console I/O — so tests can assert against it.
+ *
+ * Combines three sources:
+ *   1. Local telemetry log (~/.speclock/telemetry.jsonl) via buildUsageStats
+ *   2. Current project brain.json (enforcement mode, lock count)
+ *   3. Rule file discovery + MCP client detection (from a sample telemetry event)
+ *
+ * Falls back gracefully when telemetry is disabled or the log is missing —
+ * the "Current State" section is still populated from brain.json.
+ *
+ * @param {string} root - project root
+ * @param {object} [opts] - passed through to buildUsageStats (e.g. { events, now })
+ */
+export function buildStatsView(root, opts = {}) {
+  const usage = buildUsageStats(opts);
+
+  let lockCount = 0;
+  let enforcementMode = "unknown";
+  let brainExists = false;
+  try {
+    const brain = readBrain(root);
+    if (brain) {
+      brainExists = true;
+      const items = brain.specLock && Array.isArray(brain.specLock.items)
+        ? brain.specLock.items
+        : [];
+      lockCount = items.filter((l) => l && l.active !== false).length;
+      const cfg = getEnforcementConfig(brain);
+      // Map internal ("advisory" | "hard") to user-facing ("warn" | "hard").
+      enforcementMode = cfg.mode === "hard" ? "hard" : "warn";
+    }
+  } catch (_) { /* swallow */ }
+
+  // Rule files (from the same list guardian.js uses).
+  let ruleFiles = [];
+  try {
+    const discovered = discoverRuleFiles(root);
+    ruleFiles = discovered.map((f) => f.file);
+  } catch (_) { /* swallow */ }
+
+  // MCP clients — reuse the detector embedded in the sample telemetry event.
+  let mcpClients = [];
+  try {
+    const sample = getOptInTelemetryStatus({ eventLimit: 0 }).sampleEvent;
+    if (sample && Array.isArray(sample.mcpClientsConfigured)) {
+      mcpClients = sample.mcpClientsConfigured;
+    }
+  } catch (_) { /* swallow */ }
+
+  return {
+    ...usage,
+    brainExists,
+    enforcementMode,
+    lockCount,
+    ruleFiles,
+    mcpClients,
+  };
+}
+
+/**
+ * Render the stats view-model as a human-readable dashboard string.
+ * Kept separate from console output so tests can assert on the rendered
+ * text without capturing stdout.
+ */
+export function formatStatsDashboard(view) {
+  const lines = [];
+  const firstInstallDate = view.firstInstallIso
+    ? view.firstInstallIso.slice(0, 10)
+    : "(unknown)";
+  const installIdShort = view.installId && view.installId !== "unknown"
+    ? view.installId.slice(0, 8) + "..."
+    : "(none)";
+
+  lines.push("");
+  lines.push("SpecLock Stats — Your Usage");
+  lines.push("=".repeat(32));
+  lines.push("");
+  lines.push("Installation");
+  lines.push(`  First install:   ${firstInstallDate}`);
+  lines.push(`  Days active:     ${view.daysActive}`);
+  lines.push(`  Total events:    ${view.totalEvents}`);
+  lines.push(`  Install ID:      ${installIdShort}`);
+  lines.push("");
+
+  lines.push("Commands Used");
+  const entries = Object.entries(view.commandsByType).sort(
+    ([, a], [, b]) => b - a
+  );
+  if (entries.length === 0) {
+    if (view.telemetryEnabled) {
+      lines.push("  (no events recorded yet — run some commands!)");
+    } else {
+      lines.push("  (telemetry disabled — enable with 'speclock telemetry on' to track usage)");
+    }
+  } else {
+    const maxName = Math.max(...entries.map(([n]) => n.length));
+    for (const [name, count] of entries) {
+      lines.push(`  ${(name + ":").padEnd(maxName + 2)}${count}`);
+    }
+  }
+  lines.push("");
+
+  lines.push("Current State");
+  lines.push(`  Enforcement:  ${view.enforcementMode}`);
+  lines.push(`  Locks:        ${view.lockCount}`);
+  if (view.ruleFiles.length > 0) {
+    lines.push(`  Rule files:   ${view.ruleFiles.length} (${view.ruleFiles.join(", ")})`);
+  } else {
+    lines.push("  Rule files:   0");
+  }
+  if (view.mcpClients.length > 0) {
+    lines.push(`  MCP clients:  ${view.mcpClients.join(", ")}`);
+  } else {
+    lines.push("  MCP clients:  (none detected)");
+  }
+  lines.push("");
+
+  lines.push(`Recent Activity (last ${view.recentEvents.length})`);
+  if (view.recentEvents.length === 0) {
+    lines.push("  (no activity recorded)");
+  } else {
+    // Most recent first in the dashboard.
+    const sorted = view.recentEvents.slice().reverse();
+    for (const e of sorted) {
+      const ts = (e.timestamp || "").replace("T", " ").slice(0, 16);
+      const cmd = (e.command || "unknown").padEnd(10);
+      const exit = typeof e.exitCode === "number" ? e.exitCode : "?";
+      lines.push(`  ${ts}  ${cmd}  exit ${exit}`);
+    }
+  }
+  lines.push("");
+
+  if (!view.telemetryEnabled) {
+    lines.push("Note: telemetry is DISABLED — stats above reflect any pre-existing log");
+    lines.push("      plus the current project state from .speclock/brain.json.");
+  }
+  lines.push("Tip: Run 'speclock telemetry status' to see telemetry settings");
+  lines.push("");
+
+  return lines.join("\n");
+}
+
 // --- Main ---
 
 async function main() {
@@ -491,9 +639,16 @@ async function main() {
     console.log(`Created SPECLOCK.md (AI instructions file).`);
 
     // 4. Inject marker into package.json (so AI tools auto-discover SpecLock)
-    const pkgResult = injectPackageJsonMarker(root);
-    if (pkgResult.success) {
-      console.log("Injected SpecLock marker into package.json.");
+    //    — only when package.json actually exists. We do NOT create one.
+    const pkgJsonPath = path.join(root, "package.json");
+    const pkgJsonExistedBefore = fs.existsSync(pkgJsonPath);
+    let pkgJsonUpdated = false;
+    if (pkgJsonExistedBefore) {
+      const pkgResult = injectPackageJsonMarker(root);
+      if (pkgResult.success) {
+        pkgJsonUpdated = true;
+        console.log("Injected SpecLock marker into package.json.");
+      }
     }
 
     // 5. Apply template if specified
@@ -511,6 +666,9 @@ async function main() {
     console.log("Generated .speclock/context/latest.md");
 
     // 7. Print summary
+    const pkgJsonLine = pkgJsonUpdated
+      ? "  package.json                  — Active locks embedded (AI auto-discovery)"
+      : "  package.json (skipped — not found)";
     console.log(`
 SpecLock is ready!
 
@@ -518,7 +676,7 @@ Files created/updated:
   .speclock/brain.json          — Project memory
   .speclock/context/latest.md   — Context for AI (read this)
   SPECLOCK.md                   — AI rules (read this)
-  package.json                  — Active locks embedded (AI auto-discovery)
+${pkgJsonLine}
 
 Next steps:
   To add constraints:  npx speclock lock "Never touch auth files"
@@ -1355,16 +1513,52 @@ Tip: Run "speclock sync --all" to push constraints to Cursor, Claude, Copilot, W
         : `WARNING: ${result.violations.length} violation(s) detected. Review before proceeding.`;
     }
 
-    // Warn mode default: only exit 1 if --strict, SPECLOCK_STRICT=1, or brain is in "hard" mode
-    // (result.blocked already reflects "hard" mode from brain config).
-    const strict =
-      flags.strict === true ||
-      flags.block === true ||
+    // Warn mode default: only exit 1 if --strict, SPECLOCK_STRICT=1, or brain is in "hard" mode.
+    //
+    // Enforcement mode precedence (first match wins):
+    //   1. --strict / --block CLI flag
+    //   2. SPECLOCK_STRICT=1 env var
+    //   3. brain.enforcement.mode === "hard" from .speclock/brain.json
+    //   4. Default: warn mode (exit 0)
+    //
+    // We re-read brain.json here as a belt-and-braces fallback because
+    // semanticAudit() may early-return (no staged diff, no locks, brain
+    // missing) WITHOUT setting result.mode/result.blocked, and git hooks
+    // can run in sanitized environments where SPECLOCK_STRICT=1 on the
+    // `git commit` command line gets stripped by some shells. The
+    // persistent brain mode (set by `speclock enforce hard`) is the only
+    // reliable way to enforce hard blocking across all git/shell combos.
+    const cliStrict = flags.strict === true || flags.block === true;
+    const envStrict =
       process.env.SPECLOCK_STRICT === "1" ||
-      process.env.SPECLOCK_STRICT === "true" ||
-      result.blocked;
+      process.env.SPECLOCK_STRICT === "true";
 
-    // --- Three-tier output filter (v5.5.6) ---
+    let brainHardMode = false;
+    try {
+      const brainForMode = readBrain(root);
+      if (brainForMode) {
+        const cfg = getEnforcementConfig(brainForMode);
+        brainHardMode = cfg.mode === "hard";
+      }
+    } catch { /* brain unreadable — treat as advisory */ }
+
+    // If brain is in hard mode but semanticAudit() returned without
+    // reflecting that (early-return path), retro-fit the result so the
+    // downstream printing + blocking decision stays consistent.
+    if (brainHardMode && result.mode !== "hard") {
+      result.mode = "hard";
+      if (result.threshold === undefined) result.threshold = 70;
+    }
+    if (brainHardMode && !result.blocked) {
+      const thresh = result.threshold || 70;
+      result.blocked = (result.violations || []).some(
+        (v) => (v.confidence || 0) >= thresh
+      );
+    }
+
+    const strict = cliStrict || envStrict || brainHardMode || result.blocked;
+
+    // --- Three-tier output filter (v5.5.7) ---
     // Investor audit: walls of LOW-confidence matches are user-hostile.
     // Only HIGH and MEDIUM print by default. LOW rolls up into a one-liner.
     // --verbose / SPECLOCK_VERBOSE=1 shows everything.
@@ -1627,6 +1821,18 @@ Tip: Run "speclock sync --all" to push constraints to Cursor, Claude, Copilot, W
     }
     console.error("Usage: speclock policy <list|init|add|remove|evaluate|export>");
     process.exit(1);
+  }
+
+  // --- STATS (user-facing usage dashboard) ---
+  if (cmd === "stats") {
+    try {
+      const view = buildStatsView(root);
+      console.log(formatStatsDashboard(view));
+    } catch (err) {
+      console.error(`Failed to build stats: ${err.message}`);
+      process.exit(1);
+    }
+    return;
   }
 
   // --- TELEMETRY (opt-in, v5.5) ---
@@ -2053,21 +2259,79 @@ Tip: Run "speclock sync --all" to push constraints to Cursor, Claude, Copilot, W
     lines.push("");
 
     // --- 3. Rule Files ---
+    // Doctor checks both:
+    //   (a) ORIGINAL rule files (.cursorrules, CLAUDE.md, etc.) that users author
+    //   (b) SYNCED files written by `speclock protect` / `speclock sync`
+    //       (.cursor/rules/speclock.mdc, .windsurf/rules/speclock.md, AGENTS.md
+    //        with SpecLock marker, GEMINI.md, .github/copilot-instructions.md,
+    //        .aider.conf.yml)
+    // A file is considered "synced" if it has a SpecLock auto-gen marker in its header.
     lines.push("Rule Files");
+
+    // All the files `speclock sync` can produce (mirrors FORMATS in rules-sync.js)
+    const SYNCED_OUTPUT_FILES = [
+      ".cursor/rules/speclock.mdc",
+      ".windsurf/rules/speclock.md",
+      ".github/copilot-instructions.md",
+      "GEMINI.md",
+      ".aider.conf.yml",
+      "AGENTS.md",
+    ];
+
+    // Markers that indicate a file was written by SpecLock's sync pipeline.
+    // Must match the markers used by isSpeclockGenerated() in guardian.js.
+    const SPECLOCK_DOCTOR_SYNC_MARKERS = [
+      "Auto-synced from SpecLock",
+      "Auto-synced by SpecLock",
+      "Auto-synced.",
+      "(SpecLock)",
+      "# SpecLock Constraints",
+      "Do not edit manually — run `speclock sync`",
+      "speclock sync --format",
+      "speclock_session_briefing",
+    ];
+
+    function isSyncedFile(absPath) {
+      try {
+        const content = fs.readFileSync(absPath, "utf-8");
+        const header = content.split("\n").slice(0, 10).join("\n");
+        return SPECLOCK_DOCTOR_SYNC_MARKERS.some((m) => header.includes(m));
+      } catch (_) {
+        return false;
+      }
+    }
+
     const discovered = discoverRuleFiles(root);
     const discoveredMap = new Map(discovered.map((f) => [f.file, f]));
+    const shownFiles = new Set();
     let totalRuleFilesFound = 0;
+
+    // (a) Original/authored rule files
     for (const entry of RULE_FILES) {
       const found = discoveredMap.get(entry.file);
       if (found) {
         const extracted = extractConstraints(found.content, found.file);
         lines.push(`  ✓ ${entry.file} (${extracted.locks.length} locks extracted)`);
+        shownFiles.add(entry.file);
         totalRuleFilesFound++;
-      } else {
-        lines.push(`  ✗ ${entry.file} (not found)`);
       }
     }
+
+    // (b) Synced files written by `speclock protect` / `speclock sync`
+    for (const relPath of SYNCED_OUTPUT_FILES) {
+      if (shownFiles.has(relPath)) continue; // already shown as an authored file
+      const abs = path.join(root, relPath);
+      if (!fs.existsSync(abs)) continue;
+      if (isSyncedFile(abs)) {
+        lines.push(`  ✓ ${relPath} (synced)`);
+        shownFiles.add(relPath);
+        totalRuleFilesFound++;
+      }
+    }
+
+    // If nothing at all was found, show a clear diagnostic.
     if (totalRuleFilesFound === 0) {
+      lines.push(`  ✗ No rule files found`);
       fixes.push("Run: speclock protect (auto-creates a starter CLAUDE.md)");
       issueCount++;
     }

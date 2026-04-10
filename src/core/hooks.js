@@ -14,6 +14,26 @@ ${HOOK_MARKER} — Do not remove this line
 # engine — the same one used by 'speclock check'.
 # Install: npx speclock hook install
 # Remove:  npx speclock hook remove
+#
+# Enforcement mode precedence (first match wins):
+#   1. SPECLOCK_STRICT=1 in the environment when git commit runs
+#   2. brain.enforcement.mode === "hard" in .speclock/brain.json
+#      (set with: speclock enforce hard)
+#   3. Default: warn mode — violations printed, commit allowed
+#
+# NOTE: Some git versions/shells sanitize the environment before running
+# hooks, which can strip SPECLOCK_STRICT. The persistent brain mode set by
+# 'speclock enforce hard' is the reliable way to enforce strict blocking.
+
+# Explicitly export SPECLOCK_STRICT so it survives any sh -c subshells the
+# CLI may spawn. If unset, leave it unset — the CLI will then fall back to
+# reading brain.enforcement.mode from .speclock/brain.json.
+if [ -n "\${SPECLOCK_STRICT:-}" ]; then
+  export SPECLOCK_STRICT
+fi
+
+# Marker so the CLI knows it's running inside the pre-commit hook.
+export SPECLOCK_HOOK=1
 
 npx speclock audit-semantic --pre-commit
 exit $?
@@ -57,28 +77,26 @@ export function removeHook(root) {
     return { success: false, error: "Pre-commit hook exists but was not installed by SpecLock." };
   }
 
-  // Check if lines other than our speclock block exist
-  const lines = content.split("\n");
-  const nonSpeclockLines = lines.filter((line) => {
-    const trimmed = line.trim();
-    const lower = trimmed.toLowerCase();
-    if (!trimmed || trimmed === "#!/bin/sh") return false;
-    if (lower.includes("speclock")) return false;
-    if (lower.includes("npx speclock")) return false;
-    if (trimmed === "exit $?") return false;
-    return true;
-  });
+  // Strip our block (from the SPECLOCK-HOOK marker through the trailing
+  // `exit $?` that terminates the script snippet). Everything inside the
+  // block is ours — comments, env exports, the npx invocation, etc.
+  const cleaned = content
+    .replace(/\n*# SPECLOCK-HOOK[^\n]*\n[\s\S]*?exit \$\?\n?/, "\n")
+    .trim();
 
-  if (nonSpeclockLines.length === 0) {
-    // Entire hook was ours — remove file
+  // If nothing meaningful remains (just #!/bin/sh or empty), remove file.
+  const remaining = cleaned
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l && l !== "#!/bin/sh")
+    .join("\n");
+
+  if (remaining.length === 0) {
     fs.unlinkSync(hookPath);
     return { success: true, message: "SpecLock pre-commit hook removed." };
   }
 
-  // Other hook content exists — remove our block, keep the rest
-  const cleaned = content
-    .replace(/\n*# SPECLOCK-HOOK[^\n]*\n.*?exit \$\?\n?/s, "\n")
-    .trim();
+  // Other hook content exists — keep the rest.
   fs.writeFileSync(hookPath, cleaned + "\n", { mode: 0o755 });
   return { success: true, message: "SpecLock hook removed. Other hook content preserved." };
 }

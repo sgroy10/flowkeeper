@@ -12,9 +12,15 @@
 
 export const SYNONYM_GROUPS = [
   // --- Destructive actions ---
+  // NOTE: "wipe", "purge", "clear", "flush", etc. live here AND in the
+  // truncate/clear group below so that actions like "wipe records" /
+  // "purge users" / "clear out data" all expand to "delete".
   ["remove", "delete", "drop", "eliminate", "destroy", "kill", "purge",
-   "wipe", "erase", "obliterate", "expunge", "nuke"],
-  ["truncate", "clear", "empty", "flush", "reset", "zero-out"],
+   "wipe", "erase", "obliterate", "expunge", "nuke", "vaporize",
+   "eradicate", "scrub", "sanitize", "scrap", "trash", "axe",
+   "dump", "annul", "abolish", "extirpate", "discard", "dispose"],
+  ["truncate", "clear", "empty", "flush", "reset", "zero-out",
+   "wipe", "purge", "scrub", "sanitize"],
   ["disable", "deactivate", "turn off", "switch off", "shut off",
    "shut down", "power off", "halt", "suspend", "pause", "freeze"],
   ["uninstall", "unplug", "disconnect", "detach", "decouple", "sever"],
@@ -51,7 +57,22 @@ export const SYNONYM_GROUPS = [
   ["postgresql", "postgres", "mysql", "mongodb", "mongo", "firebase",
    "firestore", "supabase", "dynamodb", "redis", "sqlite", "mariadb",
    "cockroachdb", "cassandra", "couchdb", "neo4j"],
-  ["record", "row", "document", "entry", "item", "entity", "tuple"],
+  ["record", "records", "row", "rows", "document", "documents",
+   "entry", "entries", "item", "items", "entity", "entities", "tuple",
+   "data", "content", "info", "information", "file", "files"],
+  // --- User-like PEOPLE entities ---
+  // People nouns that are interchangeable targets for data-deletion locks
+  // like "NEVER delete user data". Intentionally narrow — "profile"/"profiles"
+  // are NOT here because a profile is a data container, not a person, and
+  // including them creates false positives on identity-vs-payment locks.
+  ["user", "users", "customer", "customers", "member", "members",
+   "subscriber", "subscribers", "patient", "patients", "person", "people"],
+  // --- Personal data containers ---
+  // These represent "things belonging to a person" and ARE targets of
+  // "delete user data" style locks. They're in their own group so they
+  // match each other and (via word-level subject synonym check) get
+  // recognized as the same kind of protected record.
+  ["account", "accounts", "profile", "profiles", "record", "records"],
   ["column", "field", "attribute", "property", "key"],
   ["backup", "snapshot", "dump", "export"],
 
@@ -234,6 +255,10 @@ export const EUPHEMISM_MAP = {
   "make room":      ["delete", "remove"],
   "declutter":      ["delete", "remove", "reorganize"],
   "thin out":       ["delete", "remove", "reduce"],
+  "get rid of":     ["delete", "remove", "destroy"],
+  "blow away":      ["delete", "remove", "destroy", "wipe"],
+  "sweep away":     ["delete", "remove", "purge"],
+  "blast away":     ["delete", "remove", "destroy"],
 
   // Modification euphemisms
   "streamline":     ["remove", "simplify", "modify", "reduce", "weaken", "bypass", "disable"],
@@ -1459,6 +1484,10 @@ const _CONTAMINATING_VERBS = new Set([
   "include", "put", "set", "use", "install", "deploy", "attach", "connect",
   "remove", "delete", "drop", "destroy", "kill", "purge", "wipe", "erase",
   "eliminate", "clear", "empty", "nuke",
+  // Extended destructive synonyms (keep in sync with SYNONYM_GROUPS deletion group)
+  "obliterate", "vaporize", "eradicate", "scrub", "sanitize", "scrap",
+  "trash", "axe", "dump", "annul", "abolish", "extirpate", "discard",
+  "dispose", "expunge",
   "change", "modify", "alter", "update", "mutate", "transform", "rewrite",
   "edit", "adjust", "tweak", "revise", "amend", "touch", "rework",
   "move", "migrate", "transfer", "shift", "relocate", "switch", "swap",
@@ -1600,10 +1629,29 @@ function _extractSubjectsInline(text) {
     }
   }
 
-  // Skip fillers
+  // Skip fillers — BUT preserve "user"/"users" when the next word is a
+  // generic entity noun ("data", "records", "info", …). In "user data"
+  // the word "user" is the only thing that identifies WHOSE data is locked;
+  // dropping it turns the subject into bare "data" and destroys scope
+  // matching against phrases like "customer accounts".
+  const _ENTITY_OWNERSHIP_TAIL = new Set([
+    "data", "records", "record", "info", "information", "content",
+    "files", "file", "entries", "entry", "documents", "document",
+    "rows", "row", "items", "item",
+  ]);
+  const _ENTITY_OWNERSHIP_HEAD = new Set([
+    "user", "users", "customer", "customers", "member", "members",
+    "account", "accounts", "profile", "profiles", "patient", "patients",
+    "subscriber", "subscribers",
+  ]);
   while (startIdx < words.length - 1) {
     const w = words[startIdx].replace(/[^a-z]/g, "");
     if (_FILLER_WORDS.has(w)) {
+      // Preserve ownership heads like "user" when followed by an entity tail.
+      if (_ENTITY_OWNERSHIP_HEAD.has(w)) {
+        const next = (words[startIdx + 1] || "").replace(/[^a-z]/g, "");
+        if (_ENTITY_OWNERSHIP_TAIL.has(next)) break;
+      }
       startIdx++;
     } else {
       break;
@@ -1657,6 +1705,39 @@ function _compareSubjectsInline(actionText, lockText) {
   }
 
   const matched = [];
+
+  // Build full-text word sets for the "both sides already share a group
+  // member directly" guard in the synonymPairs logic below.
+  //
+  // If both sides contain the SAME group member (e.g. both texts mention
+  // "migration"), that's a direct overlap and any cross-pairs routed
+  // through OTHER members of the same group are bogus self-matches.
+  // Example: lock "database schema ... migration scripts" and action
+  // "migration script ..." both contain "migration". Pairs like
+  // database↔migration or schema↔migration are just restating the
+  // fact that migration appears on both sides.
+  //
+  // However, if lock has "user" and action has "customer" (DIFFERENT
+  // members of the same group), that IS a real synonym-based match —
+  // do NOT consume the group in that case.
+  const _allLockWords = new Set(
+    lockText.toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 0)
+  );
+  const _allActionWords = new Set(
+    actionText.toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 0)
+  );
+  const _consumedGroups = new Set();
+  for (let gi = 0; gi < SYNONYM_GROUPS.length; gi++) {
+    const group = SYNONYM_GROUPS[gi];
+    // Group is "consumed" only when there is at least one member that
+    // appears on BOTH sides directly (same word). Cross-member matches
+    // (different group members on each side) are still valid.
+    const sharedMember = group.some(g =>
+      _allLockWords.has(g) && _allActionWords.has(g));
+    if (sharedMember) {
+      _consumedGroups.add(gi);
+    }
+  }
 
   // Expand subjects through concept map for cross-domain matching.
   // IMPORTANT: Do NOT seed with originals — only concept-derived terms go here.
@@ -1753,13 +1834,82 @@ function _compareSubjectsInline(actionText, lockText) {
           asWords.has(w) && w.length > 2 &&
           !_FILLER_WORDS.has(w) && !_CONTAMINATING_VERBS.has(w) &&
           !_GENERIC_SUBJECT_WORDS.has(w));
+
+        // Also check word-level synonym matches across the two phrases.
+        // "user data" vs "customer accounts" has no exact word overlap but
+        // {user↔customer, data↔accounts} are both synonym pairs → strong match.
+        //
+        // For synonym matching we DO allow filler/generic words ("user",
+        // "data", "records") as long as they actually share a synonym group
+        // with a word on the other side. This is the whole point of the
+        // synonym taxonomy — "user" and "customer" are filler on their own
+        // but map to the same entity concept. The filter below skips only
+        // contaminating verbs and very short words to avoid junk matches.
+        //
+        // CRITICAL guard: if a word appears on BOTH sides directly, don't
+        // count synonym pairs that use it on only one side. Otherwise
+        // "database schema ... migration scripts" vs "migration script ..."
+        // would fake a STRONG match via database↔migration + schema↔migration,
+        // even though the only real shared concept is "migration" itself.
+        const synonymPairs = [];
+        const _canPairWord = (w) => w.length > 2 && !_CONTAMINATING_VERBS.has(w);
+        for (const lw of lsWords) {
+          if (!_canPairWord(lw)) continue;
+          // If this lock word also appears in the action side directly,
+          // any "lw↔aw" pair is really just the direct overlap. Skip.
+          if (_allActionWords.has(lw)) continue;
+          for (const aw of asWords) {
+            if (aw === lw) continue;
+            if (!_canPairWord(aw)) continue;
+            // Same guard on the action side — if this action word also
+            // appears in the lock side directly, it's a self-match.
+            if (_allLockWords.has(aw)) continue;
+            for (let gi = 0; gi < SYNONYM_GROUPS.length; gi++) {
+              if (_consumedGroups.has(gi)) continue;
+              const group = SYNONYM_GROUPS[gi];
+              if (group.includes(lw) && group.includes(aw)) {
+                synonymPairs.push(`${lw}↔${aw}`);
+                break;
+              }
+            }
+          }
+        }
+
+        // Count "content words" per side — anything that could participate
+        // in synonym matching (not a contaminating verb, length > 2).
+        // If the phrase only has 1 content word, a single synonym pair
+        // covering that word is already a complete match.
+        const lsContent = [...lsWords].filter(_canPairWord);
+        const asContent = [...asWords].filter(_canPairWord);
+        const minContent = Math.max(1, Math.min(lsContent.length, asContent.length));
+
+        const totalEvidence = intersection.length + synonymPairs.length;
         if (intersection.length >= 2 && intersection.length >= Math.min(lsWords.size, asWords.size) * 0.4) {
           // 2+ shared words in a multi-word subject = STRONG
           matched.push(`word overlap: ${intersection.join(", ")}`);
           strongMatchCount++;
+        } else if (synonymPairs.length >= 2) {
+          // 2+ word-level synonym matches across the phrases = STRONG
+          // (e.g. "user data" vs "customer accounts" via user↔customer + data↔accounts)
+          matched.push(`synonym pairs: ${synonymPairs.join(", ")}`);
+          strongMatchCount++;
+        } else if (totalEvidence >= 2) {
+          // 1 exact + 1 synonym pair (or similar mix) = STRONG
+          matched.push(`mixed overlap: ${[...intersection, ...synonymPairs].join(", ")}`);
+          strongMatchCount++;
+        } else if (synonymPairs.length >= 1 && minContent <= 1) {
+          // Both phrases have at most 1 content word AND they're synonyms of
+          // each other — that IS the entire subject. Strong.
+          // e.g. "patient records" vs "user data" after stripping generics
+          // reduces to "patient" vs "user" (patient↔user is a synonym pair).
+          matched.push(`synonym pair (single-content): ${synonymPairs[0]}`);
+          strongMatchCount++;
         } else if (intersection.length >= 1 && intersection.length >= Math.min(lsWords.size, asWords.size) * 0.4) {
           // 1 shared word in multi-word subjects = WEAK (different components of same entity)
           matched.push(`weak overlap: ${intersection.join(", ")}`);
+        } else if (synonymPairs.length === 1) {
+          // 1 synonym pair alone with more content words = WEAK
+          matched.push(`weak synonym pair: ${synonymPairs[0]}`);
         }
       }
     }
@@ -2193,6 +2343,158 @@ export function scoreConflict({ actionText, lockText }) {
             `mandate violation: action negates MUST-requirement ` +
             `"${mandatedPhrase}" (${conceptOverlap} concept overlap)`);
         }
+      }
+    }
+  }
+
+  // Check 0c: POSITIVE-FORM LOCK CONTRADICTION ("ALWAYS use X")
+  // Positive-form locks like "ALWAYS use TypeScript" / "ALWAYS use React" /
+  // "ALWAYS use PostgreSQL" are preservation mandates: the required tech MUST
+  // remain in place. The standard NEVER/MUST-NOT scoring path misses actions
+  // that silently switch to an alternative ("convert files to Python",
+  // "rewrite the backend in Flask", "migrate to MongoDB"), because no
+  // prohibited verb is extracted from the lock.
+  //
+  // This check looks for ALWAYS/MUST-use locks and boosts the score when the
+  // action contradicts them by:
+  //   (a) Mentioning a competing technology from the same concept group.
+  //   (b) Using conversion/switch verbs ("convert", "rewrite", "port",
+  //       "migrate to", "switch to", "replace with") combined with an
+  //       alternative tech name.
+  //   (c) Referencing a file extension that belongs to a different language
+  //       than the mandated one (e.g., `.py` file vs "ALWAYS use TypeScript").
+  {
+    const alwaysUseMatch = lockText.match(
+      /^\s*(?:always|must)\s+(?:use|choose|prefer|pick|adopt|stick\s+with|stay\s+on)\s+([A-Za-z0-9][\w.+#\-]*(?:\s+[A-Za-z0-9][\w.+#\-]*){0,2})/i
+    );
+    if (alwaysUseMatch) {
+      const mandatedTechRaw = alwaysUseMatch[1].trim().toLowerCase();
+      // Take the first token as the primary tech name (e.g. "typescript 5" → "typescript")
+      const mandatedTech = mandatedTechRaw.split(/\s+/)[0];
+
+      // File-extension → language map. Drives the "`.py` file vs TypeScript" detection.
+      const EXT_TO_TECH = {
+        "js": "javascript", "jsx": "javascript", "mjs": "javascript", "cjs": "javascript",
+        "ts": "typescript", "tsx": "typescript",
+        "py": "python", "pyi": "python",
+        "rb": "ruby",
+        "go": "golang",
+        "rs": "rust",
+        "java": "java", "kt": "kotlin", "kts": "kotlin",
+        "swift": "swift",
+        "php": "php",
+        "cs": "csharp",
+        "cpp": "cplusplus", "cc": "cplusplus", "cxx": "cplusplus",
+        "c": "c",
+        "scala": "scala",
+        "ex": "elixir", "exs": "elixir",
+        "erl": "erlang",
+        "dart": "dart",
+        "lua": "lua",
+        "pl": "perl",
+        "r": "r",
+        "sh": "bash", "bash": "bash", "zsh": "bash",
+        "vue": "vue", "svelte": "svelte",
+      };
+
+      // Verbs that imply switching/converting away from the mandated tech.
+      const SWITCH_VERBS_RE = /\b(?:convert|convert\s+to|port|ported|porting|rewrite|rewritten|rewriting|switch\s+to|migrate\s+to|migrating\s+to|move\s+to|change\s+to|replace\s+\w+\s+with|replace\s+with|use\s+instead|in\s+python|in\s+ruby|in\s+go|in\s+rust|to\s+python|to\s+ruby)\b/i;
+
+      // Build a set of concept-related alternatives from CONCEPT_MAP.
+      // Anything in the same concept group (e.g., typescript → python, javascript)
+      // is a candidate "competing" alternative. Filter out concept labels
+      // like "programming language" / "language" which are not tech names.
+      const CONCEPT_LABELS_BLOCKLIST = new Set([
+        "programming language", "scripting language", "typed language",
+        "language", "systems language", "frontend framework", "ui framework",
+        "frontend", "ui", "backend framework", "backend",
+        "tech stack", "technology stack", "application framework", "java framework",
+      ]);
+      const alternatives = new Set();
+      const related = CONCEPT_MAP[mandatedTech];
+      if (related) {
+        for (const r of related) {
+          const rl = r.toLowerCase();
+          if (!CONCEPT_LABELS_BLOCKLIST.has(rl) && rl !== mandatedTech) {
+            alternatives.add(rl);
+          }
+        }
+      }
+
+      const actionLower = actionText.toLowerCase();
+
+      // (a) Detect explicit competing tech name in the action.
+      const mentionedAlternative = [...alternatives].find((alt) =>
+        new RegExp(`\\b${escapeRegex(alt)}\\b`, "i").test(actionLower)
+      );
+
+      // (b) Detect switch/conversion verb — strong signal even without a
+      // specific alternative (e.g. "rewrite the backend").
+      const hasSwitchVerb = SWITCH_VERBS_RE.test(actionLower);
+
+      // (c) Detect a foreign file extension (`.py`, `foo.py`, `*.py`).
+      let foreignExtTech = null;
+      const extMatches = actionLower.matchAll(/(?:^|[\s*\/\\"'`(])\.?([a-z]{1,6})\b|\.([a-z]{1,6})\b/g);
+      for (const m of extMatches) {
+        const ext = (m[1] || m[2] || "").toLowerCase();
+        if (EXT_TO_TECH[ext]) {
+          const tech = EXT_TO_TECH[ext];
+          if (tech !== mandatedTech) {
+            foreignExtTech = { ext, tech };
+            break;
+          }
+        }
+      }
+      // Also catch ".py file", "foo.py", "bar.py" via simpler regex
+      if (!foreignExtTech) {
+        const simpleExt = actionLower.match(/\.([a-z]{1,6})\b/);
+        if (simpleExt && EXT_TO_TECH[simpleExt[1]]) {
+          const tech = EXT_TO_TECH[simpleExt[1]];
+          if (tech !== mandatedTech) {
+            foreignExtTech = { ext: simpleExt[1], tech };
+          }
+        }
+      }
+
+      // (d) Detect the mandated tech itself in the action — if present AND no
+      // alternative/switch verb, the action is working WITH the mandated tech
+      // (safe). Don't boost score in that case.
+      const mentionsMandated = new RegExp(
+        `\\b${escapeRegex(mandatedTech)}\\b`, "i").test(actionLower);
+
+      let contradiction = false;
+      let contradictionReason = "";
+
+      if (mentionedAlternative && !mentionsMandated) {
+        contradiction = true;
+        contradictionReason =
+          `positive-lock contradiction: lock mandates "${mandatedTech}" but ` +
+          `action mentions alternative "${mentionedAlternative}"`;
+      } else if (foreignExtTech && !mentionsMandated) {
+        contradiction = true;
+        contradictionReason =
+          `positive-lock contradiction: lock mandates "${mandatedTech}" but ` +
+          `action references .${foreignExtTech.ext} (${foreignExtTech.tech}) files`;
+      } else if (hasSwitchVerb && (mentionedAlternative || foreignExtTech)) {
+        // Already covered above, but keeps the block symmetric.
+        contradiction = true;
+        contradictionReason =
+          `positive-lock contradiction: switching verb + alternative against ` +
+          `mandated "${mandatedTech}"`;
+      } else if (hasSwitchVerb && !mentionsMandated) {
+        // "convert" / "rewrite" without explicit alt but lock is preservation —
+        // moderate signal, smaller boost.
+        contradiction = true;
+        contradictionReason =
+          `positive-lock contradiction: conversion/switch action against ` +
+          `mandated "${mandatedTech}"`;
+      }
+
+      if (contradiction) {
+        // Strong boost — guaranteed to clear HIGH threshold (70).
+        score += 75;
+        actionPerformsProhibitedOp = true;
+        reasons.push(contradictionReason);
       }
     }
   }
