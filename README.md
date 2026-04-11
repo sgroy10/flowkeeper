@@ -866,6 +866,10 @@ Or run `speclock badge` in your terminal to see all variants. Full gallery: **[s
 
 Every adoption helps another developer discover SpecLock and stop their AI from wrecking their project. Thank you.
 
+### Spread the word
+
+Want to help SpecLock reach more developers? Everything you need to post — tweets, LinkedIn drafts, Reddit templates, Show HN copy, Discord messages, one-liners, elevator pitches — is pre-written and fact-checked in **[VIRAL-KIT.md](./VIRAL-KIT.md)**. Copy, paste, send. Zero effort.
+
 ---
 
 ## Contributing
