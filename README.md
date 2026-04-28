@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/sgroy10-speclock-badge.png)](https://mseep.ai/app/sgroy10-speclock)
+
 <p align="center">
   <img src="https://img.shields.io/badge/🔒-SpecLock-000000?style=for-the-badge&labelColor=000000&color=4F46E5" alt="SpecLock" height="40" />
 </p>
